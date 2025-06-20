@@ -24,7 +24,7 @@ requests==2.31.0
 
 # 生产环境
 gunicorn==21.2.0
-gevent==23.9.1
+gevent==22.10.2
 
 # 工具
 python-dotenv==1.0.0

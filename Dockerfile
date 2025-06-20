@@ -20,8 +20,12 @@ ENV TZ=Asia/Shanghai
 # 安装系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
+    libc-dev \
+    make \
     curl \
     tzdata \
+    python3-dev \
     && ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && dpkg-reconfigure -f noninteractive tzdata \
@@ -39,14 +43,29 @@ RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r ba
 COPY . /app/
 
 # 创建必要的目录
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/data /app/logs /app/instance
 
 # 设置权限
 RUN chmod -R 755 /app
 
 # 创建非root用户运行应用
 RUN groupadd -r qingzhu && useradd -r -g qingzhu qingzhu
-RUN chown -R qingzhu:qingzhu /app/data /app/logs
+RUN chown -R qingzhu:qingzhu /app/data /app/logs /app/instance
+
+# 创建初始化脚本
+RUN echo '#!/bin/sh\n\
+python -c "\n\
+from backend.app import db, User, app\n\
+with app.app_context():\n\
+    admin = User.query.filter_by(username=\"admin\").first()\n\
+    if not admin:\n\
+        admin = User(username=\"admin\", email=\"admin@example.com\", is_admin=True)\n\
+        admin.set_password(\"admin123\")\n\
+        db.session.add(admin)\n\
+        db.session.commit()\n\
+        print(\"管理员账号创建成功\")\n\
+"\n\
+python backend/app.py' > /app/start.sh && chmod +x /app/start.sh
 
 # 切换到非root用户
 USER qingzhu
@@ -59,5 +78,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5001/ || exit 1
 
 # 启动命令
-# 添加初始化脚本，确保管理员账号存在
-CMD ["sh", "-c", "python -c 'from backend.app import db, User, app; \\\n with app.app_context(): \\\n     admin = User.query.filter_by(username=\\\"admin\\\").first(); \\\n     if not admin: \\\n         admin = User(username=\\\"admin\\\", email=\\\"admin@example.com\\\", is_admin=True); \\\n         admin.set_password(\\\"admin123\\\"); \\\n         db.session.add(admin); \\\n         db.session.commit(); \\\n         print(\\\"管理员账号创建成功\\\")' && python backend/app.py"]
+CMD ["/app/start.sh"]
