@@ -4,6 +4,9 @@
 <meta charset=UTF-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>英语阅读理解生成工具</title>
+<!-- PDF导出相关库 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 body {
     margin: 0;
@@ -533,9 +536,181 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        showAlert('PDF导出功能即将实现', 'success');
-        // 这里将来实现PDF导出功能
+        exportToPDF();
     });
+    
+    // PDF导出功能实现
+    function exportToPDF() {
+        showAlert('正在生成PDF，请稍候...', 'success');
+        
+        // 获取预览内容
+        const previewContent = document.getElementById('preview-content');
+        if (!previewContent) {
+            showAlert('没有找到要导出的内容', 'error');
+            return;
+        }
+        
+        // 创建一个临时容器用于PDF导出
+        const exportContainer = document.createElement('div');
+        exportContainer.style.cssText = `
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            width: 794px;
+            padding: 40px;
+            background: white;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        `;
+        
+        // 克隆预览内容
+        const clonedContent = previewContent.cloneNode(true);
+        
+        // 调整克隆内容的样式以适应PDF
+        clonedContent.style.cssText = `
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        `;
+        
+        // 调整标题样式
+        const titles = clonedContent.querySelectorAll('h2, h3');
+        titles.forEach(title => {
+            title.style.cssText = `
+                color: #1976d2;
+                margin: 20px 0 15px 0;
+                font-size: ${title.tagName === 'H2' ? '24px' : '20px'};
+                font-weight: bold;
+            `;
+        });
+        
+        // 调整表格样式
+        const tables = clonedContent.querySelectorAll('table');
+        tables.forEach(table => {
+            table.style.cssText = `
+                width: 100%;
+                border-collapse: collapse;
+                margin: 15px 0;
+            `;
+            
+            const cells = table.querySelectorAll('th, td');
+            cells.forEach(cell => {
+                cell.style.cssText = `
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: left;
+                    font-size: 14px;
+                `;
+            });
+            
+            const headers = table.querySelectorAll('th');
+            headers.forEach(header => {
+                header.style.backgroundColor = '#f5f5f5';
+                header.style.fontWeight = 'bold';
+            });
+        });
+        
+        // 调整段落和列表样式
+        const paragraphs = clonedContent.querySelectorAll('p');
+        paragraphs.forEach(p => {
+            p.style.cssText = `
+                margin: 10px 0;
+                font-size: 16px;
+                line-height: 1.6;
+            `;
+        });
+        
+        const lists = clonedContent.querySelectorAll('ol, ul');
+        lists.forEach(list => {
+            list.style.cssText = `
+                margin: 15px 0;
+                padding-left: 30px;
+            `;
+            
+            const listItems = list.querySelectorAll('li');
+            listItems.forEach(item => {
+                item.style.cssText = `
+                    margin: 8px 0;
+                    font-size: 16px;
+                    line-height: 1.6;
+                `;
+            });
+        });
+        
+        // 调整关键词样式
+        const keywords = clonedContent.querySelectorAll('.keyword');
+        keywords.forEach(keyword => {
+            keyword.style.cssText = `
+                color: #ff5722;
+                font-weight: bold;
+                background: none;
+            `;
+        });
+        
+        // 调整容器样式
+        const containers = clonedContent.querySelectorAll('div[style*="border"]');
+        containers.forEach(container => {
+            container.style.cssText = `
+                padding: 20px;
+                margin: 20px 0;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                background: white;
+            `;
+        });
+        
+        exportContainer.appendChild(clonedContent);
+        document.body.appendChild(exportContainer);
+        
+        // 使用html2canvas和jsPDF生成PDF
+        if (typeof html2canvas !== 'undefined' && (typeof jsPDF !== 'undefined' || (window.jspdf && window.jspdf.jsPDF))) {
+            html2canvas(exportContainer, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                width: 794,
+                height: exportContainer.scrollHeight
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                // 创建PDF
+                const PDFConstructor = (typeof jsPDF !== 'undefined') ? jsPDF : window.jspdf.jsPDF;
+                const pdf = new PDFConstructor('p', 'mm', 'a4');
+                const imgWidth = 210; // A4宽度
+                const pageHeight = 295; // A4高度
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+                // 添加第一页
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                // 如果内容超过一页，添加更多页面
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                // 生成文件名
+                const title = document.getElementById('article-title').value || '阅读理解';
+                const filename = `${title}_阅读理解_${new Date().toISOString().slice(0, 10)}.pdf`;
+                // 保存PDF
+                pdf.save(filename);
+                // 清理临时元素
+                document.body.removeChild(exportContainer);
+                showAlert('PDF导出成功！', 'success');
+            }).catch(error => {
+                console.error('PDF导出失败:', error);
+                document.body.removeChild(exportContainer);
+                showAlert('PDF导出失败，请重试', 'error');
+            });
+        } else {
+            // 如果库未加载，显示错误信息
+            document.body.removeChild(exportContainer);
+            showAlert('PDF导出功能需要加载相关库，请刷新页面重试', 'error');
+        }
+    }
     
     // 应用格式调整
     applyFormatBtn.addEventListener('click', function() {
@@ -835,8 +1010,47 @@ document.addEventListener('DOMContentLoaded', function() {
                         <ol style="line-height: 1.6;">
                 `;
                 
-                data.answers.forEach(answer => {
-                    html += `<li>${answer}</li>`;
+                data.answers.forEach((answer, index) => {
+                    // 检查答案是否为对象类型
+                    if (typeof answer === 'object') {
+                        // 如果是对象，尝试提取有用的信息
+                        if (answer.text) {
+                            html += `<li>${answer.text}</li>`;
+                        } else if (answer.answer) {
+                            html += `<li>${answer.answer}</li>`;
+                        } else {
+                            // 如果没有可识别的属性，转换为字符串
+                            html += `<li>${JSON.stringify(answer)}</li>`;
+                        }
+                    } else {
+                        // 如果是字符串，检查是否包含选项标记（A、B、C、D）
+                        const optionMatch = answer.match(/^([A-D])[.、]\s*(.+)$/i);
+                        if (optionMatch) {
+                            const optionLetter = optionMatch[1].toUpperCase();
+                            const answerContent = optionMatch[2].trim();
+                            html += `<li><strong>${optionLetter}</strong>. ${answerContent}</li>`;
+                        } else {
+                            // 尝试从问题中获取选项信息
+                            let questionOptions = null;
+                            if (data.questions && data.questions[index] && typeof data.questions[index] === 'object' && data.questions[index].options) {
+                                questionOptions = data.questions[index].options;
+                            }
+                            
+                            // 尝试从答案中提取正确选项
+                            const correctOptionMatch = answer.match(/^正确答案[是为:：]\s*([A-D])\b/i) || answer.match(/^([A-D])\b/i);
+                            let correctOption = correctOptionMatch ? correctOptionMatch[1].toUpperCase() : null;
+                            
+                            if (correctOption && questionOptions) {
+                                // 如果找到了正确选项和问题选项，显示选项+答案
+                                const optionIndex = correctOption.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+                                const optionText = optionIndex >= 0 && optionIndex < questionOptions.length ? questionOptions[optionIndex] : '';
+                                html += `<li><strong>${correctOption}. ${optionText}</strong> - ${answer}</li>`;
+                            } else {
+                                // 如果是普通字符串，直接显示
+                                html += `<li>${answer}</li>`;
+                            }
+                        }
+                    }
                 });
                 
                 html += `</ol></div>`;

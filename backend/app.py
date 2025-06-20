@@ -819,16 +819,33 @@ def parse_generated_content(content):
     try:
         # 提取词汇表
         vocabulary = []
-        vocab_pattern = r'\b([A-Za-z]+)\b[^\n]*?[：:]\s*([^\n]*?)\s*[\-—]\s*([^\n]*)'  # 匹配单词、翻译和定义
+        vocab_pattern = r'\b([A-Za-z]+)\b\s*(?:\[([^\]]+)\])?[^\n]*?[：:]\s*([^\n]*?)\s*[\-—]\s*([^\n]*)' 
         vocab_matches = re.findall(vocab_pattern, content)
         
         for match in vocab_matches:
             if len(match) >= 3:
                 vocabulary.append({
                     'word': match[0].strip(),
-                    'translation': match[1].strip(),
-                    'definition': match[2].strip()
+                    'phonetic': match[1].strip() if len(match) > 1 and match[1].strip() else '',
+                    'translation': match[2].strip() if len(match) > 2 else '',
+                    'definition': match[3].strip() if len(match) > 3 else ''
                 })
+                
+        # 如果上面的正则没有匹配到音标，尝试另一种格式的音标提取
+        if not any(item.get('phonetic') for item in vocabulary):
+            phonetic_pattern = r'\b([A-Za-z]+)\b\s*(/[^/]+/|\[[^\]]+\])[^\n]*?[：:]\s*([^\n]*?)\s*[\-—]\s*([^\n]*)'
+            phonetic_matches = re.findall(phonetic_pattern, content)
+            
+            if phonetic_matches:
+                vocabulary = []
+                for match in phonetic_matches:
+                    if len(match) >= 3:
+                        vocabulary.append({
+                            'word': match[0].strip(),
+                            'phonetic': match[1].strip(),
+                            'translation': match[2].strip() if len(match) > 2 else '',
+                            'definition': match[3].strip() if len(match) > 3 else ''
+                        })
         
         # 提取问题
         questions = []
@@ -856,7 +873,7 @@ def parse_generated_content(content):
         
         # 如果提取失败，添加错误信息
         if not vocabulary:
-            vocabulary = [{'word': '解析失败', 'translation': '请查看原始生成内容', 'definition': ''}]
+            vocabulary = [{'word': '解析失败', 'phonetic': '', 'translation': '请查看原始生成内容', 'definition': ''}]
         if not questions:
             questions = ['解析失败，请查看原始生成内容']
         
@@ -872,7 +889,7 @@ def parse_generated_content(content):
         
         # 返回错误信息
         return {
-            'vocabulary': [{'word': '解析失败', 'translation': '请查看原始生成内容', 'definition': ''}],
+            'vocabulary': [{'word': '解析失败', 'phonetic': '', 'translation': '请查看原始生成内容', 'definition': ''}],
             'questions': ['解析失败，请查看原始生成内容'],
             'answers': [],
             'translation': '',
@@ -1077,9 +1094,9 @@ def generate_article_content():
                     raise Exception(f"通义千问API调用失败: {response_json}")
                 
             elif model == 'siliconflow':
-                api_key = 'sk-habqljthapqvkwltxhrhtskvxihotdibjtxmjaxroqtnlorp'
+                api_key = os.environ.get('SILICONFLOW_API_KEY')
                 if not api_key:
-                    raise Exception('硅基流动API密钥未配置，请联系管理员')
+                    raise Exception('硅基流动API密钥未配置')
                 
                 # 硅基流动API调用
                 url = "https://api.siliconflow.cn/v1/chat/completions"
