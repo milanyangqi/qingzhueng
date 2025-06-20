@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时文阅读 - 青竹英语</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h2>青竹英语</h2>
+                </div>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-home"></i>
+                        <span>首页</span>
+                    </a>
+                </li>
+                <li class="nav-item active">
+                    <a href="{{ url_for('reading') }}">
+                        <i class="fas fa-book-reader"></i>
+                        <span>时文阅读</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('my_articles') }}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>我的文章</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('formatting') }}">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>阅读排版</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('profile') }}">
+                        <i class="fas fa-user"></i>
+                        <span>个人资料</span>
+                    </a>
+                </li>
+                {% if session.is_admin %}
+                <li class="nav-item admin-section">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-cog"></i>
+                        <span>管理员后台</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ session.username }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>退出登录</span>
+                </a>
+            </div>
+        </nav>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1><i class="fas fa-book-reader"></i> 时文阅读</h1>
+                <p class="subtitle">输入英文文本，自动生成标题和重点单词标注</p>
+            </div>
+            
+            <div class="reading-container">
+                <!-- 文本输入区 -->
+                <div class="input-section">
+                    <div class="card">
+                        <h3><i class="fas fa-edit"></i> 文本输入</h3>
+                        <form id="textForm">
+                            <div class="textarea-container">
+                                <textarea id="textInput" placeholder="请输入英文文本..." rows="10"></textarea>
+                                <div class="input-tools">
+                                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                                        <i class="fas fa-trash"></i> 清空
+                                    </button>
+                                    <button type="submit" class="btn btn-primary" id="processBtn">
+                                        <i class="fas fa-magic"></i> 处理文本
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- 处理结果区 -->
+                <div class="result-section" id="resultSection" style="display: none;">
+                    <!-- 生成的标题 -->
+                    <div class="card title-card">
+                        <h3><i class="fas fa-heading"></i> 自动生成标题</h3>
+                        <input type="text" class="generated-title" id="articleTitle" value="" readonly />
+                        <div class="title-tools">
+                            <button type="button" id="editTitleBtn" class="btn btn-secondary">
+                                <i class="fas fa-edit"></i> 编辑标题
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 文章内容显示 -->
+                    <div class="card content-card">
+                        <h3><i class="fas fa-file-text"></i> 文章内容</h3>
+                        <div class="content-tools">
+                            <div class="style-controls">
+                                <label>字体大小：</label>
+                                <div class="number-input">
+                                    <input type="number" id="fontSizeInput" min="10" max="36" value="16" step="1">
+                                    <span class="unit">px</span>
+                                </div>
+                                
+                                <label>行间距：</label>
+                                <div class="number-input">
+                                    <input type="number" id="lineHeightInput" min="1.0" max="3.0" value="1.6" step="0.1">
+                                </div>
+                                
+                                <label>字体：</label>
+                                <select id="fontFamilySelect">
+                                    <option value="Arial, sans-serif" selected>Arial</option>
+                                    <option value="'Times New Roman', serif">Times New Roman</option>
+                                    <option value="'Courier New', monospace">Courier New</option>
+                                    <option value="Georgia, serif">Georgia</option>
+                                    <option value="Verdana, sans-serif">Verdana</option>
+                                    <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                                    <option value="'SimSun', serif">宋体</option>
+                                    <option value="'KaiTi', serif">楷体</option>
+                                </select>
+                                
+                                <label>颜色：</label>
+                                <div class="color-picker">
+                                    <div class="color-option" data-color="#000000" style="background-color: #000000;"></div>
+                                    <div class="color-option" data-color="#333333" style="background-color: #333333;"></div>
+                                    <div class="color-option" data-color="#666666" style="background-color: #666666;"></div>
+                                    <div class="color-option" data-color="#0066cc" style="background-color: #0066cc;"></div>
+                                    <div class="color-option" data-color="#006600" style="background-color: #006600;"></div>
+                                    <div class="color-option" data-color="#660000" style="background-color: #660000;"></div>
+                                    <div class="color-option" data-color="#990099" style="background-color: #990099;"></div>
+                                    <div class="color-option" data-color="#ff6600" style="background-color: #ff6600;"></div>
+                                    <div class="color-option" data-color="#3366ff" style="background-color: #3366ff;"></div>
+                                    <div class="color-option" data-color="#009999" style="background-color: #009999;"></div>
+                                </div>
+                                
+                                <button type="button" id="highlightBtn" class="btn btn-secondary">
+                                    <i class="fas fa-highlighter"></i> 高亮重点词
+                                </button>
+                            </div>
+                        </div>
+                        <div class="article-content" id="articleContent"></div>
+                    </div>
+                    
+                    <!-- 重点单词 -->
+                    <div class="card keywords-card">
+                        <h3><i class="fas fa-star"></i> 重点单词</h3>
+                        <div class="keywords-container" id="keywordsContainer"></div>
+                    </div>
+                    
+                    <!-- 保存操作 -->
+                    <div class="card save-card">
+                        <h3><i class="fas fa-save"></i> 保存文章</h3>
+                        <p>文章已自动保存到您的个人文库中</p>
+                        <div class="save-tools">
+                            <button type="button" id="viewArticlesBtn" class="btn btn-primary">
+                                <i class="fas fa-eye"></i> 查看我的文章
+                            </button>
+                            <button type="button" id="newArticleBtn" class="btn btn-secondary">
+                                <i class="fas fa-plus"></i> 处理新文本
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 单词详情模态框 -->
+    <div id="wordModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="word-details">
+                <h3 id="modalWord"></h3>
+                <div class="phonetic" id="modalPhonetic"></div>
+                <div class="translation" id="modalTranslation"></div>
+                <div class="word-actions">
+                    <button class="btn btn-primary" id="pronounceBtn">
+                        <i class="fas fa-volume-up"></i> 发音
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 消息提示 -->
+    <div id="message" class="message"></div>
+    
+    <script src="{{ url_for('static', filename='js/reading.js') }}"></script>
+</body>
+</html>

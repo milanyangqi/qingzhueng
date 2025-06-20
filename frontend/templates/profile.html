@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料 - 青竹英语</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h2>青竹英语</h2>
+                </div>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-home"></i>
+                        <span>首页</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('reading') }}">
+                        <i class="fas fa-book-reader"></i>
+                        <span>时文阅读</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('my_articles') }}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>我的文章</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('formatting') }}">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>阅读排版</span>
+                    </a>
+                </li>
+                <li class="nav-item active">
+                    <a href="{{ url_for('profile') }}">
+                        <i class="fas fa-user"></i>
+                        <span>个人资料</span>
+                    </a>
+                </li>
+                {% if session.is_admin %}
+                <li class="nav-item admin-section">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-cog"></i>
+                        <span>管理员后台</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ session.username }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>退出登录</span>
+                </a>
+            </div>
+        </nav>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1><i class="fas fa-user"></i> 个人资料</h1>
+                <p class="subtitle">管理您的个人信息和学习偏好</p>
+            </div>
+            
+            <div class="profile-container">
+                <!-- 基本信息 -->
+                <div class="card profile-basic">
+                    <div class="card-header">
+                        <h3><i class="fas fa-id-card"></i> 基本信息</h3>
+                    </div>
+                    
+                    <div class="profile-avatar">
+                        <div class="avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="avatar-info">
+                            <h4>{{ user.username }}</h4>
+                            <p>{{ user.email }}</p>
+                            {% if user.is_admin %}
+                                <span class="badge badge-admin">管理员</span>
+                            {% else %}
+                                <span class="badge badge-user">普通用户</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <form id="profileForm" class="profile-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fullName">姓名</label>
+                                <input type="text" id="fullName" name="full_name" 
+                                       value="{{ user.profile.full_name if user.profile else '' }}" 
+                                       placeholder="请输入您的姓名">
+                            </div>
+                            <div class="form-group">
+                                <label for="phone">手机号</label>
+                                <input type="tel" id="phone" name="phone" 
+                                       value="{{ user.profile.phone if user.profile else '' }}" 
+                                       placeholder="请输入手机号">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="level">英语水平</label>
+                                <select id="level" name="level">
+                                    <option value="beginner" {{ 'selected' if user.profile and user.profile.level == 'beginner' else '' }}>初级</option>
+                                    <option value="intermediate" {{ 'selected' if user.profile and user.profile.level == 'intermediate' else '' }}>中级</option>
+                                    <option value="advanced" {{ 'selected' if user.profile and user.profile.level == 'advanced' else '' }}>高级</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="joinDate">注册时间</label>
+                                <input type="text" id="joinDate" value="{{ user.created_at.strftime('%Y年%m月%d日') }}" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 保存更改
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                                <i class="fas fa-undo"></i> 重置
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- 学习统计 -->
+                <div class="card learning-stats">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-line"></i> 学习统计</h3>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>0</h4>
+                                <p>已读文章</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-spell-check"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>0</h4>
+                                <p>学习单词</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>0</h4>
+                                <p>学习天数</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-trophy"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>0</h4>
+                                <p>获得成就</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 学习偏好 -->
+                <div class="card learning-preferences">
+                    <div class="card-header">
+                        <h3><i class="fas fa-cog"></i> 学习偏好</h3>
+                    </div>
+                    
+                    <div class="preferences-grid">
+                        <div class="preference-item">
+                            <div class="preference-header">
+                                <i class="fas fa-palette"></i>
+                                <h4>阅读主题</h4>
+                            </div>
+                            <select class="preference-select">
+                                <option value="light">浅色主题</option>
+                                <option value="dark">深色主题</option>
+                                <option value="auto">跟随系统</option>
+                            </select>
+                        </div>
+                        
+                        <div class="preference-item">
+                            <div class="preference-header">
+                                <i class="fas fa-font"></i>
+                                <h4>默认字体大小</h4>
+                            </div>
+                            <select class="preference-select">
+                                <option value="14px">小</option>
+                                <option value="16px" selected>中</option>
+                                <option value="18px">大</option>
+                                <option value="20px">特大</option>
+                            </select>
+                        </div>
+                        
+                        <div class="preference-item">
+                            <div class="preference-header">
+                                <i class="fas fa-bell"></i>
+                                <h4>学习提醒</h4>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="preference-item">
+                            <div class="preference-header">
+                                <i class="fas fa-volume-up"></i>
+                                <h4>自动发音</h4>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 账户安全 -->
+                <div class="card account-security">
+                    <div class="card-header">
+                        <h3><i class="fas fa-shield-alt"></i> 账户安全</h3>
+                    </div>
+                    
+                    <div class="security-items">
+                        <div class="security-item">
+                            <div class="security-info">
+                                <h4>修改密码</h4>
+                                <p>定期更换密码以保护账户安全</p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="showChangePassword()">
+                                <i class="fas fa-key"></i> 修改密码
+                            </button>
+                        </div>
+                        
+                        <div class="security-item">
+                            <div class="security-info">
+                                <h4>邮箱验证</h4>
+                                <p>验证邮箱以接收重要通知</p>
+                            </div>
+                            <span class="badge badge-success">
+                                <i class="fas fa-check"></i> 已验证
+                            </span>
+                        </div>
+                        
+                        <div class="security-item">
+                            <div class="security-info">
+                                <h4>登录记录</h4>
+                                <p>查看最近的登录活动</p>
+                            </div>
+                            <button class="btn btn-secondary">
+                                <i class="fas fa-history"></i> 查看记录
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 修改密码模态框 -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>修改密码</h3>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label>当前密码</label>
+                    <input type="password" id="currentPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="newPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="confirmNewPassword" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">确认修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 消息提示 -->
+    <div id="message" class="message"></div>
+    
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang=zh-CN>
+<head>
+<meta charset=UTF-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>英语阅读理解生成工具</title>
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    background: #f5f5f5;
+    font-family: "Microsoft YaHei", Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    position: relative;
+    padding: 40px 20px;
+}
+
+.content-area {
+    width: 100%;
+    max-width: 800px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    color: #1976d2;
+    margin-bottom: 10px;
+}
+
+.header p {
+    color: #666;
+    font-size: 16px;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+input[type=text], textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+input[type=text]:focus, textarea:focus {
+    border-color: #1976d2;
+    outline: none;
+}
+
+textarea {
+    min-height: 200px;
+    resize: vertical;
+}
+
+.btn {
+    background: #1976d2;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
+.btn:hover {
+    background: #1565c0;
+}
+
+.btn-secondary {
+    background: #4caf50;
+}
+
+.btn-secondary:hover {
+    background: #388e3c;
+}
+
+.btn-group {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-group .btn {
+    flex: 1;
+}
+
+.preview-area {
+    margin-top: 30px;
+    border-top: 1px solid #eee;
+    padding-top: 30px;
+}
+
+.preview-area h2 {
+    color: #1976d2;
+    margin-bottom: 20px;
+}
+
+.loading {
+    display: none;
+    text-align: center;
+    padding: 20px;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top: 4px solid #1976d2;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.options-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.model-selection {
+    margin-top: 10px;
+}
+
+.model-selection select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    min-width: 150px;
+    font-size: 14px;
+}
+
+.options-section h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.option-item {
+    display: flex;
+    align-items: center;
+}
+
+.option-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="content-area">
+        <div class="header">
+            <h1>英语阅读理解生成工具</h1>
+            <p>输入文章标题和内容，生成专业的英语阅读理解练习</p>
+        </div>
+        
+        <div class="alert alert-success" id="success-alert">操作成功！</div>
+        <div class="alert alert-error" id="error-alert">操作失败！</div>
+        
+        <div class="form-group">
+            <label for="article-title">文章标题</label>
+            <input type="text" id="article-title" placeholder="请输入文章标题">
+        </div>
+        
+        <div class="form-group">
+            <label for="article-content">文章内容</label>
+            <textarea id="article-content" placeholder="请输入文章内容（英文）"></textarea>
+        </div>
+        
+        <div class="options-section">
+            <h3>阅读理解选项</h3>
+            <div class="options-grid">
+                <div class="option-item">
+                    <input type="checkbox" id="option-vocabulary" checked>
+                    <label for="option-vocabulary">生成词汇表</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="option-questions" checked>
+                    <label for="option-questions">生成理解问题</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="option-translation" checked>
+                    <label for="option-translation">包含中文翻译</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="option-answers" checked>
+                    <label for="option-answers">包含答案解析</label>
+                </div>
+                <div class="option-item model-selection">
+                    <label for="ai-model">选择AI模型：</label>
+                    <select id="ai-model" class="form-control">
+                        <option value="openai">OpenAI</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="doubao">豆包</option>
+                        <option value="qianwen">通义千问</option>
+                        <option value="siliconflow">硅基流动</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn" id="generate-btn">生成阅读理解</button>
+            <button class="btn btn-secondary" id="export-pdf-btn">导出PDF</button>
+        </div>
+        
+        <div class="loading" id="loading-indicator">
+            <div class="loading-spinner"></div>
+            <p>正在生成阅读理解，请稍候...</p>
+        </div>
+        
+        <div class="preview-area" id="preview-area">
+            <h2>预览</h2>
+            <div id="preview-content"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const generateBtn = document.getElementById('generate-btn');
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
+    const titleInput = document.getElementById('article-title');
+    const contentInput = document.getElementById('article-content');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const previewArea = document.getElementById('preview-area');
+    const previewContent = document.getElementById('preview-content');
+    const successAlert = document.getElementById('success-alert');
+    const errorAlert = document.getElementById('error-alert');
+    
+    // 初始隐藏预览区域
+    previewArea.style.display = 'none';
+    
+    // 生成阅读理解
+    generateBtn.addEventListener('click', function() {
+        const title = titleInput.value.trim();
+        const content = contentInput.value.trim();
+        
+        if (!title) {
+            showAlert('请输入文章标题', 'error');
+            return;
+        }
+        
+        if (!content) {
+            showAlert('请输入文章内容', 'error');
+            return;
+        }
+        
+        // 获取选项
+        const aiModel = document.getElementById('ai-model').value;
+        const options = {
+            vocabulary: document.getElementById('option-vocabulary').checked,
+            questions: document.getElementById('option-questions').checked,
+            translation: document.getElementById('option-translation').checked,
+            answers: document.getElementById('option-answers').checked,
+            model: aiModel
+        };
+        
+        // 显示加载指示器
+        loadingIndicator.style.display = 'block';
+        
+        // 调用后端API
+        fetch('/generate_comprehension', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                options: options
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 隐藏加载指示器
+            loadingIndicator.style.display = 'none';
+            
+            if (data.success) {
+                // 显示预览区域
+                previewArea.style.display = 'block';
+                
+                // 使用API返回的数据生成预览内容
+                const previewHTML = generatePreviewHTMLFromAPI(data.data);
+                previewContent.innerHTML = previewHTML;
+                
+                showAlert(data.message, 'success');
+            } else {
+                showAlert(data.message || '生成失败，请重试', 'error');
+            }
+        })
+        .catch(error => {
+            // 隐藏加载指示器
+            loadingIndicator.style.display = 'none';
+            console.error('Error:', error);
+            showAlert('请求失败，请检查网络连接', 'error');
+        });
+    });
+    
+    // 导出PDF
+    exportPdfBtn.addEventListener('click', function() {
+        if (previewArea.style.display === 'none') {
+            showAlert('请先生成阅读理解内容', 'error');
+            return;
+        }
+        
+        showAlert('PDF导出功能即将实现', 'success');
+        // 这里将来实现PDF导出功能
+    });
+    
+    // 显示提示信息
+    function showAlert(message, type) {
+        const alert = type === 'success' ? successAlert : errorAlert;
+        alert.textContent = message;
+        alert.style.display = 'block';
+        
+        setTimeout(function() {
+            alert.style.display = 'none';
+        }, 3000);
+    }
+    
+    // 生成预览HTML（示例 - 用于备份）
+    function generatePreviewHTML(title, content) {
+        // 分析文章内容，提取段落
+        const paragraphs = content.split('\n').filter(p => p.trim().length > 0);
+        
+        // 生成问题（示例）
+        const questions = [
+            '1. What is the main idea of this article?',
+            '2. According to the passage, what are the key points mentioned?',
+            '3. What conclusion can be drawn from the article?',
+            '4. How does the author support their argument?'
+        ];
+        
+        // 生成词汇表（示例）
+        const vocabulary = [
+            { word: 'comprehension', translation: '理解，领悟', definition: 'the ability to understand' },
+            { word: 'generate', translation: '生成，产生', definition: 'to produce or create' },
+            { word: 'article', translation: '文章，论文', definition: 'a piece of writing' },
+            { word: 'preview', translation: '预览，预视', definition: 'an opportunity to view something before it is acquired or becomes generally available' }
+        ];
+        
+        // 构建HTML
+        let html = `
+            <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="color: #1976d2; text-align: center;">${title}</h2>
+                <div style="line-height: 1.6;">
+        `;
+        
+        // 添加文章内容
+        paragraphs.forEach(paragraph => {
+            html += `<p>${paragraph}</p>`;
+        });
+        
+        html += `</div></div>`;
+        
+        // 添加问题部分
+        if (document.getElementById('option-questions').checked) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #1976d2;">Reading Comprehension Questions</h3>
+                    <ul style="line-height: 1.6;">
+            `;
+            
+            questions.forEach(question => {
+                html += `<li>${question}</li>`;
+            });
+            
+            html += `</ul></div>`;
+        }
+        
+        // 添加词汇表部分
+        if (document.getElementById('option-vocabulary').checked) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                    <h3 style="color: #1976d2;">Vocabulary</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Word</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Translation</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Definition</th>
+                        </tr>
+            `;
+            
+            vocabulary.forEach(item => {
+                html += `
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${item.word}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${item.translation}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${item.definition}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `</table></div>`;
+        }
+        
+        return html;
+    }
+    
+    // 使用API返回的数据生成预览HTML
+    function generatePreviewHTMLFromAPI(data) {
+        // 分析文章内容，提取段落
+        const paragraphs = data.content.split('\n').filter(p => p.trim().length > 0);
+        
+        // 获取使用的AI模型
+        const modelName = data.model || 'openai';
+        let modelDisplayName = '';
+        
+        switch(modelName) {
+            case 'openai':
+                modelDisplayName = 'OpenAI';
+                break;
+            case 'deepseek':
+                modelDisplayName = 'DeepSeek';
+                break;
+            case 'doubao':
+                modelDisplayName = '豆包';
+                break;
+            case 'qianwen':
+                modelDisplayName = '通义千问';
+                break;
+            default:
+                modelDisplayName = modelName;
+        }
+        
+        // 构建HTML
+        let html = `
+            <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="color: #1976d2; text-align: center;">${data.title}</h2>
+                <div style="text-align: center; margin-bottom: 10px; color: #666;">由 ${modelDisplayName} 生成</div>
+                <div style="line-height: 1.6;">
+        `;
+        
+        // 添加文章内容
+        paragraphs.forEach(paragraph => {
+            html += `<p>${paragraph}</p>`;
+        });
+        
+        html += `</div></div>`;
+        
+        // 添加问题部分
+        if (document.getElementById('option-questions').checked && data.questions && data.questions.length > 0) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #1976d2;">Reading Comprehension Questions</h3>
+                    <ul style="line-height: 1.6;">
+            `;
+            
+            data.questions.forEach(question => {
+                html += `<li>${question}</li>`;
+            });
+            
+            html += `</ul></div>`;
+        }
+        
+        // 添加词汇表部分
+        if (document.getElementById('option-vocabulary').checked && data.vocabulary && data.vocabulary.length > 0) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #1976d2;">Vocabulary</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Word</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Translation</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Definition</th>
+                        </tr>
+            `;
+            
+            data.vocabulary.forEach(item => {
+                html += `
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${item.word}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${item.translation}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${item.definition}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `</table></div>`;
+        }
+        
+        // 添加答案部分
+        if (document.getElementById('option-answers').checked && data.answers && data.answers.length > 0) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #1976d2;">Answers</h3>
+                    <div style="line-height: 1.6;">
+            `;
+            
+            data.answers.forEach(answer => {
+                html += `<p>${answer}</p>`;
+            });
+            
+            html += `</div></div>`;
+        }
+        
+        // 添加翻译部分
+        if (document.getElementById('option-translation').checked && data.translation) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #1976d2;">Translation</h3>
+                    <div style="line-height: 1.6;">
+                        <p>${data.translation.replace(/\n/g, '<br>')}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 如果解析失败，显示原始生成内容
+        if (data.raw_generated_content && 
+            ((data.questions && data.questions.length === 1 && data.questions[0].includes('解析失败')) || 
+             (data.vocabulary && data.vocabulary.length === 1 && data.vocabulary[0].word.includes('解析失败')))) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #1976d2;">原始生成内容</h3>
+                    <pre style="white-space: pre-wrap; line-height: 1.6; background: #f5f5f5; padding: 15px; border-radius: 5px;">${data.raw_generated_content}</pre>
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+});
+</script>
+</body>
+</html>

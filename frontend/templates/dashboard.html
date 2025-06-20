@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心 - 青竹英语</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h2>青竹英语</h2>
+                </div>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item active">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-home"></i>
+                        <span>首页</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('reading') }}">
+                        <i class="fas fa-book-reader"></i>
+                        <span>时文阅读</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('my_articles') }}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>我的文章</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('formatting') }}">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>阅读排版</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('reading_comprehension') }}">
+                        <i class="fas fa-book"></i>
+                        <span>阅读理解</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('profile') }}">
+                        <i class="fas fa-user"></i>
+                        <span>个人资料</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>学习统计</span>
+                        <span class="coming-soon">即将推出</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#">
+                        <i class="fas fa-trophy"></i>
+                        <span>成就系统</span>
+                        <span class="coming-soon">即将推出</span>
+                    </a>
+                </li>
+                {% if session.is_admin %}
+                <li class="nav-item admin-section">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-cog"></i>
+                        <span>管理员后台</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ session.username }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>退出登录</span>
+                </a>
+            </div>
+        </nav>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1>欢迎回来，{{ session.username }}！</h1>
+                <p class="subtitle">开始您的英语学习之旅</p>
+            </div>
+            
+            <div class="dashboard-grid">
+                <!-- 快速操作卡片 -->
+                <div class="card quick-actions">
+                    <h3><i class="fas fa-bolt"></i> 快速操作</h3>
+                    <div class="action-buttons">
+                        <a href="{{ url_for('reading') }}" class="action-btn">
+                            <i class="fas fa-plus"></i>
+                            <span>新建时文阅读</span>
+                        </a>
+                        <a href="{{ url_for('my_articles') }}" class="action-btn">
+                            <i class="fas fa-history"></i>
+                            <span>查看历史文章</span>
+                        </a>
+                        <a href="{{ url_for('profile') }}" class="action-btn">
+                            <i class="fas fa-edit"></i>
+                            <span>编辑个人资料</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- 学习统计 -->
+                <div class="card stats">
+                    <h3><i class="fas fa-chart-line"></i> 学习统计</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number">0</div>
+                            <div class="stat-label">已读文章</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">0</div>
+                            <div class="stat-label">学习单词</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">0</div>
+                            <div class="stat-label">学习天数</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 功能介绍 -->
+                <div class="card features-intro">
+                    <h3><i class="fas fa-star"></i> 平台特色</h3>
+                    <div class="feature-list">
+                        <div class="feature-item">
+                            <i class="fas fa-magic"></i>
+                            <div>
+                                <h4>智能文本处理</h4>
+                                <p>自动生成文章标题和重点单词标注</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-palette"></i>
+                            <div>
+                                <h4>自定义样式</h4>
+                                <p>个性化的阅读界面和排版设置</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-volume-up"></i>
+                            <div>
+                                <h4>音标发音</h4>
+                                <p>准确的单词音标和中文翻译</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 最近活动 -->
+                <div class="card recent-activity">
+                    <h3><i class="fas fa-clock"></i> 最近活动</h3>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <i class="fas fa-user-plus"></i>
+                            <div>
+                                <p>欢迎加入青竹英语！</p>
+                                <span class="time">刚刚</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

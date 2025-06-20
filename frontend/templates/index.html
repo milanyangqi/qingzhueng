@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>青竹英语 - English Learning Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="auth-container">
+            <div class="logo-section">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h1>青竹英语</h1>
+                </div>
+                <p class="tagline">专业的英语学习平台</p>
+            </div>
+            
+            <div class="auth-forms">
+                <!-- 登录表单 -->
+                <div class="form-container" id="loginForm">
+                    <h2><i class="fas fa-sign-in-alt"></i> 用户登录</h2>
+                    <form id="loginFormElement">
+                        <div class="input-group">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="loginUsername" placeholder="用户名" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="loginPassword" placeholder="密码" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i> 登录
+                        </button>
+                    </form>
+                    <p class="switch-form">
+                        还没有账户？ <a href="#" onclick="showRegister()">立即注册</a>
+                    </p>
+                </div>
+                
+                <!-- 注册表单 -->
+                <div class="form-container" id="registerForm" style="display: none;">
+                    <h2><i class="fas fa-user-plus"></i> 用户注册</h2>
+                    <form id="registerFormElement">
+                        <div class="input-group">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="registerUsername" placeholder="用户名" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="registerEmail" placeholder="邮箱" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="registerPassword" placeholder="密码" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="confirmPassword" placeholder="确认密码" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> 注册
+                        </button>
+                    </form>
+                    <p class="switch-form">
+                        已有账户？ <a href="#" onclick="showLogin()">立即登录</a>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-book-reader"></i>
+                    <h3>时文阅读</h3>
+                    <p>智能文本处理，自动生成重点单词标注</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-user-graduate"></i>
+                    <h3>个性化学习</h3>
+                    <p>根据用户水平定制学习内容</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>学习统计</h3>
+                    <p>详细的学习进度和成果分析</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 消息提示 -->
+    <div id="message" class="message"></div>
+    
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+</html>

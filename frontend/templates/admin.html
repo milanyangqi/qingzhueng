@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员后台 - 青竹英语</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h2>青竹英语</h2>
+                </div>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-home"></i>
+                        <span>首页</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('reading') }}">
+                        <i class="fas fa-book-reader"></i>
+                        <span>时文阅读</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('my_articles') }}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>我的文章</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('formatting') }}">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>阅读排版</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('profile') }}">
+                        <i class="fas fa-user"></i>
+                        <span>个人资料</span>
+                    </a>
+                </li>
+                <li class="nav-item active admin-section">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-cog"></i>
+                        <span>管理员后台</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ session.username }}</span>
+                    <span class="admin-badge">管理员</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>退出登录</span>
+                </a>
+            </div>
+        </nav>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1><i class="fas fa-cog"></i> 管理员后台</h1>
+                <p class="subtitle">系统管理和用户管理</p>
+            </div>
+            
+            <div class="admin-container">
+                <!-- 统计概览 -->
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ users|length }}</h3>
+                            <p>总用户数</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ users|selectattr('is_admin')|list|length }}</h3>
+                            <p>管理员数</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>0</h3>
+                            <p>VIP用户</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>0</h3>
+                            <p>今日新增</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 管理功能导航 -->
+                <div class="admin-nav">
+                    <div class="nav-tabs">
+                        <button class="tab-btn active" data-tab="users">
+                            <i class="fas fa-users"></i> 用户管理
+                        </button>
+                        <button class="tab-btn" data-tab="system">
+                            <i class="fas fa-cogs"></i> 系统设置
+                        </button>
+                        <button class="tab-btn" data-tab="content">
+                            <i class="fas fa-file-alt"></i> 内容管理
+                        </button>
+                        <button class="tab-btn" data-tab="analytics">
+                            <i class="fas fa-chart-bar"></i> 数据分析
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 用户管理 -->
+                <div class="tab-content active" id="users">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-users"></i> 用户列表</h3>
+                            <div class="header-actions">
+                                <button class="btn btn-primary" id="addUserBtn">
+                                    <i class="fas fa-plus"></i> 添加用户
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="users-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>用户名</th>
+                                        <th>邮箱</th>
+                                        <th>角色</th>
+                                        <th>注册时间</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                    <tr>
+                                        <td>{{ user.id }}</td>
+                                        <td>
+                                            <div class="user-info">
+                                                <i class="fas fa-user-circle"></i>
+                                                {{ user.username }}
+                                            </div>
+                                        </td>
+                                        <td>{{ user.email }}</td>
+                                        <td>
+                                            {% if user.is_admin %}
+                                                <span class="badge badge-admin">管理员</span>
+                                            {% else %}
+                                                <span class="badge badge-user">普通用户</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            <span class="badge badge-active">正常</span>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn btn-sm btn-secondary" onclick="editUser({{ user.id }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                {% if not user.is_admin or users|selectattr('is_admin')|list|length > 1 %}
+                                                <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 系统设置 -->
+                <div class="tab-content" id="system">
+                    <div class="card">
+                        <h3><i class="fas fa-cogs"></i> 系统设置</h3>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <h4>网站配置</h4>
+                                <p>网站基本信息和SEO设置</p>
+                                <button class="btn btn-secondary">配置</button>
+                            </div>
+                            <div class="setting-item">
+                                <h4>用户权限</h4>
+                                <p>用户等级和VIP功能设置</p>
+                                <button class="btn btn-secondary">设置</button>
+                            </div>
+                            <div class="setting-item">
+                                <h4>邮件服务</h4>
+                                <p>邮件发送和通知配置</p>
+                                <button class="btn btn-secondary">配置</button>
+                            </div>
+                            <div class="setting-item">
+                                <h4>数据备份</h4>
+                                <p>自动备份和恢复设置</p>
+                                <button class="btn btn-secondary">设置</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 内容管理 -->
+                <div class="tab-content" id="content">
+                    <div class="card">
+                        <h3><i class="fas fa-file-alt"></i> 内容管理</h3>
+                        <p class="coming-soon-text">
+                            <i class="fas fa-clock"></i>
+                            内容管理功能即将推出，敬请期待！
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- 数据分析 -->
+                <div class="tab-content" id="analytics">
+                    <div class="card">
+                        <h3><i class="fas fa-chart-bar"></i> 数据分析</h3>
+                        <p class="coming-soon-text">
+                            <i class="fas fa-clock"></i>
+                            数据分析功能即将推出，敬请期待！
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 添加/编辑用户模态框 -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modalTitle">添加用户</h3>
+            <form id="userForm">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="modalUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="modalEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="modalPassword">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="modalIsAdmin">
+                        管理员权限
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 消息提示 -->
+    <div id="message" class="message"></div>
+    
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
