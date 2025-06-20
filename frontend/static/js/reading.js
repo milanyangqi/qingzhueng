@@ -146,6 +146,11 @@ function displayProcessedText(text, words) {
             showWordDetails(this.dataset.word, this.dataset.phonetic, this.dataset.translation);
         });
     });
+    
+    // 自动保存文章
+    setTimeout(() => {
+        saveArticle();
+    }, 1000);
 }
 
 // 显示单词列表
@@ -279,13 +284,24 @@ async function saveArticle() {
         
         console.log('保存文章响应:', response);
         
-        const data = await response.json();
-        console.log('保存文章响应数据:', data);
+        const result = await response.json();
+        console.log('保存文章响应数据:', result);
         
-        if (data.success) {
-            showMessage('文章保存成功！', 'success');
+        if (result.success) {
+            // 如果后端返回了特定消息（如图片提醒），则显示该消息
+            if (result.message) {
+                showMessage(result.message, 'info');
+            } else {
+                showMessage('文章保存成功！', 'success');
+            }
+            // 清除本地存储的草稿
+            localStorage.removeItem('reading_draft');
+            // 可以选择跳转到文章列表页
+            setTimeout(() => {
+                window.location.href = '/my_articles';
+            }, 1500);
         } else {
-            showMessage(data.message || '保存失败', 'error');
+            showMessage(`保存失败: ${result.message}`, 'error');
         }
     } catch (error) {
         console.error('Save error:', error);
@@ -550,6 +566,14 @@ document.addEventListener('DOMContentLoaded', function() {
         newArticleBtn.addEventListener('click', function() {
             clearContent();
             document.getElementById('textInput').focus();
+        });
+    }
+    
+    // 手动保存文章按钮
+    const saveArticleBtn = document.getElementById('saveArticleBtn');
+    if (saveArticleBtn) {
+        saveArticleBtn.addEventListener('click', function() {
+            saveArticle();
         });
     }
 });

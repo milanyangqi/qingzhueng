@@ -15,14 +15,15 @@ function showMessage(text, type = 'info') {
 
 // 查看文章详情
 function viewArticle(articleId) {
+    currentArticleId = articleId; // 设置当前文章ID
     fetch(`/get_article/${articleId}`)
         .then(response => response.json())
         .then(article => {
-            document.getElementById('modalTitle').textContent = article.title;
-            document.getElementById('modalDate').textContent = new Date(article.created_at).toLocaleDateString();
+            document.getElementById('modalArticleTitle').textContent = article.title;
+            document.getElementById('modalArticleDate').textContent = new Date(article.created_at).toLocaleDateString();
             
             // 优先使用处理后的内容
-            const contentElement = document.getElementById('modalContent');
+            const contentElement = document.getElementById('modalArticleContent');
             if (article.processed_content) {
                 contentElement.innerHTML = article.processed_content;
                 
@@ -38,11 +39,14 @@ function viewArticle(articleId) {
             }
             
             // 显示关键词
-            const keywordsElement = document.getElementById('modalKeywords');
+            const keywordsElement = document.getElementById('modalArticleKeywords');
             keywordsElement.innerHTML = '';
             
             if (article.keywords && article.keywords.length > 0) {
-                article.keywords.forEach(keyword => {
+                // 确保关键词是数组
+                const keywords = Array.isArray(article.keywords) ? article.keywords : JSON.parse(article.keywords);
+
+                keywords.forEach(keyword => {
                     const tag = document.createElement('span');
                     tag.className = 'keyword-tag';
                     tag.textContent = keyword.word;

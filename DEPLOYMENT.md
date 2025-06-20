@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-青竹英语是一个功能完整的英语学习网站，包含用户管理、时文阅读等核心功能。
+青竹英语是一个功能完整的英语学习网站，包含用户管理、时文阅读等核心功能。本文档提供详细的部署和配置指南，确保系统正确运行。
 
 ## 快速开始
 
@@ -18,8 +18,8 @@
    # 进入项目目录
    cd myengweb
    
-   # 运行启动脚本
-   ./start.sh
+   # 运行启动脚本（自动初始化管理员账号）
+   ./start.sh start-local
    ```
 
 3. **手动启动**
@@ -33,6 +33,9 @@
    
    # 启动应用
    python backend/app.py
+   
+   # 初始化管理员账号（需要单独执行）
+   ./start.sh init-admin
    ```
 
 ### 方法二：Docker部署
@@ -43,7 +46,10 @@
 
 2. **使用Docker Compose（推荐）**
    ```bash
-   # 构建并启动服务
+   # 构建并启动服务（自动初始化管理员账号）
+   ./start.sh start
+   
+   # 或者直接使用docker-compose
    docker-compose up -d
    
    # 查看日志
@@ -58,8 +64,10 @@
    # 构建镜像
    docker build -t qingzhu-english .
    
-   # 运行容器
-   docker run -d -p 5001:5001 --name qingzhu-english qingzhu-english
+   # 运行容器（自动初始化管理员账号）
+   docker run -d -p 5001:5001 \
+     -e SECRET_KEY=$(openssl rand -hex 32) \
+     --name qingzhu-english qingzhu-english
    ```
 
 ## 访问信息
@@ -67,6 +75,8 @@
 - **网站地址**: http://localhost:5001
 - **默认管理员账号**: admin
 - **默认管理员密码**: admin123
+
+> **重要安全提示**: 首次登录后请立即修改默认管理员密码！
 
 ## 项目结构
 
@@ -132,20 +142,43 @@ myengweb/
 ```bash
 # Flask配置
 export FLASK_ENV=production
-export SECRET_KEY=your-very-secure-secret-key
+export SECRET_KEY=$(openssl rand -hex 32)  # 随机生成安全密钥
 
 # 数据库配置
 export DATABASE_URL=sqlite:///data/qingzhu_english.db
+# 如果使用PostgreSQL
+# export DATABASE_URL=postgresql://qingzhu:password@localhost:5432/qingzhu_english
+
+# 管理员账号配置（可选，默认为admin/admin123）
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=secure_password_here
+export ADMIN_EMAIL=admin@example.com
 
 # 其他配置
 export PORT=5001
+export TZ=Asia/Shanghai
 ```
 
 ### 数据库
 
 默认使用SQLite数据库，数据文件存储在 `data/` 目录中。
 
-如需使用其他数据库，请修改 `DATABASE_URL` 环境变量。
+如需使用其他数据库，请修改 `DATABASE_URL` 环境变量，并取消注释 `docker-compose.yml` 中的相关服务配置。
+
+#### 管理员账号初始化
+
+系统在首次启动时会自动创建管理员账号：
+
+- **用户名**: admin
+- **密码**: admin123
+- **邮箱**: admin@example.com
+
+您也可以通过以下命令手动初始化管理员账号：
+
+```bash
+# 使用启动脚本初始化
+./start.sh init-admin
+```
 
 ## 生产环境部署
 
@@ -281,16 +314,29 @@ docker-compose up -d --build
 
 1. **修改默认密码**
    - 首次部署后立即修改管理员密码
+   - 使用强密码（至少12位，包含大小写字母、数字和特殊字符）
 
 2. **使用HTTPS**
    - 生产环境必须使用SSL证书
+   - 推荐使用Let's Encrypt免费证书
 
 3. **定期备份**
-   - 设置自动备份计划
+   - 设置自动备份计划（至少每日备份一次）
+   - 将备份存储在不同的物理位置
 
 4. **更新依赖**
-   - 定期更新Python包
+   - 定期更新Python包（检查安全漏洞）
    - 更新Docker镜像
+   - 启用自动安全更新
+
+5. **访问控制**
+   - 使用防火墙限制访问
+   - 考虑使用反向代理（如Nginx）
+   - 限制管理员IP访问范围
+
+6. **监控系统**
+   - 设置日志监控和告警
+   - 监控异常登录尝试
 
 ## 技术支持
 

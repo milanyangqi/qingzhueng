@@ -136,7 +136,7 @@
                             
                             <div class="article-keywords">
                                 {% if article.keywords %}
-                                    {% set keywords = article.keywords|from_json %}
+                                    {% set keywords = article.keywords|from_json if article.keywords is string else article.keywords %}
                                     {% for keyword in keywords[:5] %}
                                         <span class="keyword-tag">{{ keyword.word }}</span>
                                     {% endfor %}

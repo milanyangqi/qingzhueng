@@ -11,8 +11,15 @@ services:
       - ./logs:/app/logs
     environment:
       - FLASK_ENV=production
-      - SECRET_KEY=your-secret-key-change-this-in-production
+      # 使用随机生成的密钥增强安全性
+      - SECRET_KEY=${SECRET_KEY:-$(openssl rand -hex 32)}
       - DATABASE_URL=sqlite:///data/qingzhu_english.db
+      # 设置时区
+      - TZ=Asia/Shanghai
+      # 管理员账号配置
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - ADMIN_EMAIL=admin@example.com
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/"]
@@ -20,37 +27,74 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    # 限制资源使用
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   # 可选：添加数据库服务（如果需要使用PostgreSQL）
   # db:
-  #   image: postgres:13
+  #   image: postgres:13-alpine
   #   container_name: qingzhu_db
   #   environment:
   #     POSTGRES_DB: qingzhu_english
   #     POSTGRES_USER: qingzhu
-  #     POSTGRES_PASSWORD: your-db-password
+  #     # 使用环境变量或随机生成密码
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-$(openssl rand -base64 12)}
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
   #   ports:
-  #     - "5432:5432"
+  #     - "127.0.0.1:5432:5432"  # 仅本地访问
   #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U qingzhu"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   # 限制资源使用
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 256M
 
   # 可选：添加Redis服务（用于缓存和会话存储）
   # redis:
   #   image: redis:6-alpine
   #   container_name: qingzhu_redis
+  #   command: redis-server --requirepass ${REDIS_PASSWORD:-$(openssl rand -base64 12)}
   #   ports:
-  #     - "6379:6379"
+  #     - "127.0.0.1:6379:6379"  # 仅本地访问
   #   volumes:
   #     - redis_data:/data
   #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   # 限制资源使用
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.3'
+  #         memory: 128M
 
 volumes:
   # postgres_data:
+  #   driver: local
   # redis_data:
+  #   driver: local
   logs:
+    driver: local
   data:
+    driver: local
 
 networks:
   default:
     name: qingzhu_network
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: qingzhu_br

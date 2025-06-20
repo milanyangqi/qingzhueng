@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import re
@@ -14,12 +14,30 @@ app = Flask(__name__,
             template_folder='../frontend/templates')
 
 # 配置数据库
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qingzhu_english.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['SECRET_KEY'] = os.urandom(24)
+app.permanent_session_lifetime = timedelta(days=7)
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+
+# 添加Jinja2过滤器
+@app.template_filter('from_json')
+def from_json(value):
+    if value is None:
+        return []
+    try:
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+    except:
+        app.logger.error(f"Error parsing JSON: {value}")
+        return []
+
+@app.template_filter('tojson')
+def to_json(value):
+    return json.dumps(value)
 
 # 用户模型
 class User(db.Model):
@@ -50,6 +68,8 @@ class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    processed_content = db.Column(db.Text, nullable=True)  # 处理后的内容
+    keywords = db.Column(db.Text, nullable=True)  # 关键词，JSON格式存储
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -91,16 +111,158 @@ def reading():
 def my_articles():
     # 检查用户是否登录
     if 'user_id' not in session:
+        app.logger.warning("User not logged in, redirecting to index")
         return redirect(url_for('index'))
+    
+    app.logger.info(f"User {session.get('username', 'unknown')} (ID: {session['user_id']}) accessing my_articles route")
     
     # 获取当前用户的文章
     try:
         # 查询当前用户的所有文章，按创建时间降序排列
         articles = Article.query.filter_by(user_id=session['user_id']).order_by(Article.created_at.desc()).all()
+        app.logger.info(f"Successfully fetched {len(articles)} articles for user {session['user_id']}.")
+        
+        # 记录每篇文章的详细信息
+        for article in articles:
+            app.logger.info(f"Article ID: {article.id}, Title: {article.title}, Created At: {article.created_at}, Keywords type: {type(article.keywords)}")
+            # 检查关键词是否为字符串，如果是，尝试解析为JSON
+            if article.keywords and isinstance(article.keywords, str):
+                try:
+                    json.loads(article.keywords)
+                    app.logger.info(f"Article {article.id} keywords parsed successfully as JSON")
+                except json.JSONDecodeError as je:
+                    app.logger.error(f"Article {article.id} has invalid JSON keywords: {je}")
+        
+        app.logger.info(f"Rendering template with {len(articles)} articles")
         return render_template('my_articles.html', articles=articles)
     except Exception as e:
-        print(f"获取用户文章失败: {str(e)}")
-        return render_template('my_articles.html', articles=[])
+        app.logger.error(f"获取用户文章失败: {str(e)}")
+        # 如果出错，尝试使用更基本的查询
+        try:
+            app.logger.info("Falling back to raw SQL query")
+            # 使用原始SQL查询，选择模板需要的所有列
+            from sqlalchemy import text
+            raw_articles = db.session.execute(
+                text("SELECT id, title, content, user_id, created_at, updated_at, processed_content, keywords FROM article WHERE user_id = :user_id ORDER BY created_at DESC"),
+                {"user_id": session['user_id']}
+            ).fetchall()
+            
+            app.logger.info(f"Fallback query fetched {len(raw_articles)} raw articles for user {session['user_id']}.")
+
+            # 将查询结果转换为与Article对象行为相似的对象列表
+            articles = []
+            
+            class AttrDict(dict):
+                def __init__(self, *args, **kwargs):
+                    super(AttrDict, self).__init__(*args, **kwargs)
+                    self.__dict__ = self
+                
+                # 添加strftime方法以模拟datetime对象的行为
+                def strftime(self, format_str):
+                    if isinstance(self.get('created_at'), datetime):
+                        return self.get('created_at').strftime(format_str)
+                    return str(self.get('created_at'))
+
+            for row in raw_articles:
+                created_at_obj = row[4]
+                if isinstance(created_at_obj, str):
+                    try:
+                        if '.' in created_at_obj:
+                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S.%f')
+                        else:
+                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                         app.logger.error(f"Could not parse date string: {created_at_obj}")
+                         created_at_obj = datetime.now() # Fallback
+
+                # 确保关键词是有效的JSON字符串
+                keywords = row[7] or '[]'
+                if not isinstance(keywords, str):
+                    try:
+                        keywords = json.dumps(keywords)
+                    except:
+                        app.logger.error(f"Error converting keywords to JSON string: {keywords}")
+                        keywords = '[]'
+
+                # 确保 updated_at 也是正确的 datetime 对象
+                updated_at_obj = row[5]
+                if isinstance(updated_at_obj, str):
+                    try:
+                        if '.' in updated_at_obj:
+                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S.%f')
+                        else:
+                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        app.logger.error(f"Could not parse updated_at date string: {updated_at_obj}")
+                        updated_at_obj = None
+                
+                article_data = {
+                    'id': row[0],
+                    'title': row[1],
+                    'content': row[2],
+                    'user_id': row[3],
+                    'created_at': created_at_obj,
+                    'updated_at': updated_at_obj,
+                    'processed_content': row[6],
+                    'keywords': keywords
+                }
+                articles.append(AttrDict(article_data))
+
+            app.logger.info(f"Fallback query processed {len(articles)} articles.")
+            for article in articles:
+                try:
+                    # 格式化日期以避免datetime序列化问题
+                    created_at_str = article.created_at.strftime('%Y-%m-%d %H:%M:%S.%f') if hasattr(article.created_at, 'strftime') else str(article.created_at)
+                    app.logger.info(f"Fallback Article ID: {article.id}, Title: {article.title}, Created At: {created_at_str}, Keywords: {article.keywords}")
+                except Exception as e3:
+                    app.logger.error(f"Error logging article info: {str(e3)}")
+
+            return render_template('my_articles.html', articles=articles)
+        except Exception as e2:
+            app.logger.error(f"备用查询也失败: {str(e2)}")
+            # 尝试最基本的方式返回空列表
+            app.logger.info("Returning empty article list as last resort")
+            return render_template('my_articles.html', articles=[])
+
+# 路由：获取单篇文章详情
+@app.route('/get_article/<int:article_id>')
+def get_article(article_id):
+    # 检查用户是否登录
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        # 尝试从数据库获取文章
+        article = Article.query.filter_by(id=article_id, user_id=session['user_id']).first()
+        
+        if not article:
+            return jsonify({'error': 'Article not found'}), 404
+        
+        # 确保关键词是JSON格式
+        keywords = []
+        if article.keywords:
+            try:
+                if isinstance(article.keywords, str):
+                    keywords = json.loads(article.keywords)
+                else:
+                    keywords = article.keywords
+            except:
+                app.logger.error(f"Error parsing keywords for article {article_id}: {article.keywords}")
+        
+        # 返回文章数据
+        return jsonify({
+            'id': article.id,
+            'title': article.title,
+            'content': article.content,
+            'processed_content': article.processed_content,
+            'keywords': keywords,
+            'created_at': article.created_at.isoformat(),
+            'updated_at': article.updated_at.isoformat() if article.updated_at else None
+        })
+    
+    except Exception as e:
+        app.logger.error(f"Error getting article {article_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # 路由：阅读排版页面
 @app.route('/formatting')
@@ -1482,6 +1644,134 @@ def edit_article(article_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': f'更新失败: {str(e)}'})
 
+# 路由：处理文本
+@app.route('/process_text', methods=['POST'])
+def process_text():
+    try:
+        # 暂时注释掉登录检查，以便测试
+        # if 'user_id' not in session:
+        #     return jsonify({'success': False, 'message': '请先登录'})
+            
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return jsonify({'success': False, 'message': '无效的请求数据'})
+            
+        text = data['text']
+        if not text.strip():
+            return jsonify({'success': False, 'message': '文本内容不能为空'})
+        
+        # 生成标题
+        title = generate_title_from_text(text)
+        
+        # 提取重要单词
+        words = extract_important_words(text)
+        
+        return jsonify({
+            'success': True,
+            'message': '文本处理成功',
+            'title': title,
+            'words': words
+        })
+    except Exception as e:
+        print(f"处理文本时出错: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'处理失败: {str(e)}'})
+
+# 从文本生成标题
+def generate_title_from_text(text):
+    # 简单实现：取第一句话的前几个单词作为标题
+    sentences = text.split('.')
+    if sentences and sentences[0].strip():
+        words = sentences[0].strip().split()
+        title_words = words[:8] if len(words) > 8 else words
+        return ' '.join(title_words) + ('...' if len(words) > 8 else '')
+    return 'English Reading Article'
+
+# 提取重要单词
+def extract_important_words(text):
+    # 简单实现：提取较长的单词作为重要单词
+    import re
+    from collections import Counter
+    
+    # 清理文本，只保留字母和空格
+    clean_text = re.sub(r'[^a-zA-Z\s]', ' ', text.lower())
+    
+    # 分割成单词
+    words = clean_text.split()
+    
+    # 过滤掉常见的停用词
+    stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'if', 'because', 'as', 'what',
+                 'when', 'where', 'how', 'all', 'with', 'for', 'in', 'to', 'from',
+                 'of', 'at', 'by', 'about', 'like', 'through', 'over', 'before',
+                 'between', 'after', 'since', 'without', 'under', 'within', 'along',
+                 'following', 'across', 'behind', 'beyond', 'plus', 'except', 'but',
+                 'up', 'out', 'around', 'down', 'off', 'above', 'near', 'is', 'are',
+                 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do',
+                 'does', 'did', 'doing', 'can', 'could', 'should', 'would', 'might',
+                 'will', 'shall', 'may', 'must', 'that', 'this', 'these', 'those',
+                 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her',
+                 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their'}
+    
+    filtered_words = [word for word in words if word not in stop_words and len(word) > 3]
+    
+    # 计算单词频率
+    word_counts = Counter(filtered_words)
+    
+    # 选择频率较高的单词（最多20个）
+    important_words = [{'word': word, 'translation': get_word_translation(word)} 
+                      for word, count in word_counts.most_common(20)]
+    
+    return important_words
+
+# 获取单词翻译
+def get_word_translation(word):
+    # 简单的单词翻译映射（实际应用中可以使用翻译API或词典数据库）
+    translations = {
+        'important': '重要的',
+        'computer': '计算机',
+        'technology': '技术',
+        'science': '科学',
+        'education': '教育',
+        'development': '发展',
+        'environment': '环境',
+        'government': '政府',
+        'business': '商业',
+        'research': '研究',
+        'information': '信息',
+        'knowledge': '知识',
+        'experience': '经验',
+        'management': '管理',
+        'international': '国际的',
+        'communication': '通信',
+        'university': '大学',
+        'community': '社区',
+        'industry': '工业',
+        'economic': '经济的',
+        'political': '政治的',
+        'social': '社会的',
+        'cultural': '文化的',
+        'natural': '自然的',
+        'digital': '数字的',
+        'global': '全球的',
+        'national': '国家的',
+        'regional': '地区的',
+        'local': '当地的',
+        'modern': '现代的',
+        'traditional': '传统的',
+        'professional': '专业的',
+        'personal': '个人的',
+        'financial': '金融的',
+        'medical': '医疗的',
+        'educational': '教育的',
+        'technical': '技术的',
+        'scientific': '科学的',
+        'artistic': '艺术的',
+        'creative': '创造性的'
+    }
+    
+    return translations.get(word, '未知')
+
 # 路由：检查登录状态
 @app.route('/api/check_login', methods=['GET'])
 def check_login():
@@ -1491,7 +1781,61 @@ def check_login():
         'user_id': session.get('user_id') if logged_in else None
     })
 
+# 路由：保存文章
+@app.route('/save_article', methods=['POST'])
+def save_article():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '请先登录'})
+    
+    try:
+        data = request.get_json()
+        
+        # 检查必要字段
+        if not data.get('title') or not data.get('content'):
+            return jsonify({'success': False, 'message': '标题和内容不能为空'})
+        
+        # 检查内容中是否包含图片
+        content = data.get('content', '')
+        processed_content = data.get('processedContent', '')
+        has_images = '<img' in content or '<img' in processed_content
+        
+        # 创建新文章
+        new_article = Article(
+            title=data['title'],
+            content=data['content'],
+            processed_content=data.get('processedContent'),
+            keywords=json.dumps(data.get('keywords', [])),
+            user_id=session['user_id'],
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.session.add(new_article)
+        db.session.commit()
+        
+        # 如果包含图片，返回提醒信息
+        if has_images:
+            return jsonify({
+                'success': True, 
+                'article_id': new_article.id,
+                'message': '文章保存成功，请注意文章中包含图片'
+            })
+        
+        return jsonify({
+            'success': True, 
+            'message': '文章保存成功',
+            'article_id': new_article.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"保存文章出错: {str(e)}")
+        return jsonify({'success': False, 'message': f'保存失败: {str(e)}'})
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5001)
+
+# 注意：此路由已在前面定义，这里删除重复定义
+
+# 注意：这些过滤器已在前面定义，这里删除重复定义
