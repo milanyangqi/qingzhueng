@@ -23,7 +23,7 @@ body {
 
 .content-area {
     width: 100%;
-    max-width: 800px;
+    max-width: 1200px;
     background: #fff;
     border-radius: 16px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -56,7 +56,7 @@ body {
     color: #333;
 }
 
-input[type=text], textarea {
+input[type=text], textarea, select {
     width: 100%;
     padding: 12px 15px;
     border-radius: 8px;
@@ -66,7 +66,7 @@ input[type=text], textarea {
     transition: border-color 0.3s;
 }
 
-input[type=text]:focus, textarea:focus {
+input[type=text]:focus, textarea:focus, select:focus {
     border-color: #1976d2;
     outline: none;
 }
@@ -111,11 +111,7 @@ textarea {
     flex: 1;
 }
 
-.preview-area {
-    margin-top: 30px;
-    border-top: 1px solid #eee;
-    padding-top: 30px;
-}
+
 
 .preview-area h2 {
     color: #1976d2;
@@ -201,6 +197,43 @@ textarea {
 .option-item input[type="checkbox"] {
     margin-right: 8px;
 }
+
+.preview-area {
+    margin-top: 30px;
+    border-top: 1px solid #eee;
+    padding-top: 30px;
+    display: flex;
+    gap: 20px;
+}
+
+.preview-content-container {
+    flex: 1;
+}
+
+.format-controls-container {
+    width: 300px;
+    flex-shrink: 0;
+}
+
+.format-controls {
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.format-control-item {
+    margin-bottom: 15px;
+}
+
+.question-options {
+    margin-left: 20px;
+    margin-top: 5px;
+}
+
+.question-option {
+    margin-bottom: 5px;
+}
 </style>
 </head>
 <body>
@@ -214,6 +247,17 @@ textarea {
         <div class="alert alert-success" id="success-alert">操作成功！</div>
         <div class="alert alert-error" id="error-alert">操作失败！</div>
         
+        <div class="form-group model-selection" style="margin-bottom: 15px;">
+            <label for="ai-model">选择AI模型：</label>
+            <select id="ai-model" class="form-control">
+                <option value="openai">OpenAI</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="doubao">豆包</option>
+                <option value="qianwen">通义千问</option>
+                <option value="siliconflow">硅基流动</option>
+            </select>
+        </div>
+        
         <div class="form-group">
             <label for="article-title">文章标题</label>
             <input type="text" id="article-title" placeholder="请输入文章标题">
@@ -222,6 +266,7 @@ textarea {
         <div class="form-group">
             <label for="article-content">文章内容</label>
             <textarea id="article-content" placeholder="请输入文章内容（英文）"></textarea>
+            <button class="btn" id="generate-content-btn" style="margin-top: 10px; background-color: #ff9800;">AI生成语料</button>
         </div>
         
         <div class="options-section">
@@ -230,6 +275,10 @@ textarea {
                 <div class="option-item">
                     <input type="checkbox" id="option-vocabulary" checked>
                     <label for="option-vocabulary">生成词汇表</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="option-key-words" checked>
+                    <label for="option-key-words">提取重点单词</label>
                 </div>
                 <div class="option-item">
                     <input type="checkbox" id="option-questions" checked>
@@ -243,22 +292,36 @@ textarea {
                     <input type="checkbox" id="option-answers" checked>
                     <label for="option-answers">包含答案解析</label>
                 </div>
-                <div class="option-item model-selection">
-                    <label for="ai-model">选择AI模型：</label>
-                    <select id="ai-model" class="form-control">
-                        <option value="openai">OpenAI</option>
-                        <option value="deepseek">DeepSeek</option>
-                        <option value="doubao">豆包</option>
-                        <option value="qianwen">通义千问</option>
-                        <option value="siliconflow">硅基流动</option>
+                <div class="option-item">
+                    <input type="checkbox" id="option-phonetic" checked>
+                    <label for="option-phonetic">单词包含音标</label>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; display: flex; gap: 20px; flex-wrap: wrap;">
+                <div class="question-count-selector" style="min-width: 200px;">
+                    <label for="question-count">问题数量：</label>
+                    <select id="question-count" style="width: 100px;">
+                        <option value="3">3题</option>
+                        <option value="4">4题</option>
+                        <option value="5" selected>5题</option>
+                        <option value="6">6题</option>
+                        <option value="7">7题</option>
+                        <option value="8">8题</option>
+                        <option value="9">9题</option>
+                        <option value="10">10题</option>
                     </select>
+                </div>
+                
+                <div class="key-words-input" style="flex-grow: 1; display: none;">
+                    <label for="manual-key-words">手动输入重点单词（用逗号分隔）：</label>
+                    <input type="text" id="manual-key-words" placeholder="例如: comprehension, vocabulary, article" style="width: 100%; margin-top: 5px;">
                 </div>
             </div>
         </div>
         
         <div class="btn-group">
             <button class="btn" id="generate-btn">生成阅读理解</button>
-            <button class="btn btn-secondary" id="export-pdf-btn">导出PDF</button>
         </div>
         
         <div class="loading" id="loading-indicator">
@@ -268,7 +331,60 @@ textarea {
         
         <div class="preview-area" id="preview-area">
             <h2>预览</h2>
-            <div id="preview-content"></div>
+            <div style="display: flex; gap: 20px;">
+                <div class="preview-content-container" style="flex: 1;">
+                    <div id="preview-content"></div>
+                </div>
+                
+                <div class="format-controls-container" style="width: 250px;">
+                    <div class="format-controls" style="position: sticky; top: 20px;">
+                        <h3 style="margin-top: 0; margin-bottom: 15px;">格式调整</h3>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">以下格式调整仅应用于文章正文</p>
+                        
+                        <div class="format-control-item">
+                            <label for="font-size">字体大小：</label>
+                            <input type="number" id="font-size" min="12" max="24" value="16" style="width: 60px;">
+                            <span>px</span>
+                        </div>
+                        
+                        <div class="format-control-item">
+                            <label for="text-color">文本颜色：</label>
+                            <input type="color" id="text-color" value="#333333">
+                        </div>
+                        
+                        <div class="format-control-item">
+                            <label for="keyword-color">重点单词标记颜色：</label>
+                            <input type="color" id="keyword-color" value="#ff5722">
+                        </div>
+                        
+                        <div class="format-control-item">
+                            <label for="line-height">行间距：</label>
+                            <input type="number" id="line-height" min="1" max="3" step="0.1" value="1.6" style="width: 60px;">
+                        </div>
+                        
+                        <div class="format-control-item">
+                            <label for="font-family">字体：</label>
+                            <select id="font-family">
+                                <option value="'Microsoft YaHei', Arial, sans-serif">微软雅黑</option>
+                                <option value="'SimSun', serif">宋体</option>
+                                <option value="'KaiTi', serif">楷体</option>
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                            </select>
+                        </div>
+                        
+                        <div class="format-control-item">
+                            <label for="background-color">背景颜色：</label>
+                            <input type="color" id="background-color" value="#ffffff">
+                        </div>
+                        
+                        <button class="btn" id="apply-format-btn" style="margin-top: 10px;">应用格式</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
+            <button class="btn" id="export-pdf-btn" style="display: inline-block; width: auto; padding-left: 30px; padding-right: 30px;">导出PDF</button>
         </div>
     </div>
 </div>
@@ -276,6 +392,7 @@ textarea {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const generateBtn = document.getElementById('generate-btn');
+    const generateContentBtn = document.getElementById('generate-content-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     const titleInput = document.getElementById('article-title');
     const contentInput = document.getElementById('article-content');
@@ -284,9 +401,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewContent = document.getElementById('preview-content');
     const successAlert = document.getElementById('success-alert');
     const errorAlert = document.getElementById('error-alert');
+    const keyWordsOption = document.getElementById('option-key-words');
+    const keyWordsInput = document.querySelector('.key-words-input');
+    const applyFormatBtn = document.getElementById('apply-format-btn');
+    
+    // 重点单词选项切换显示手动输入框
+    keyWordsOption.addEventListener('change', function() {
+        keyWordsInput.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // 初始化显示状态
+    keyWordsInput.style.display = keyWordsOption.checked ? 'block' : 'none';
     
     // 初始隐藏预览区域
     previewArea.style.display = 'none';
+    
+    // 检查是否有从 lexile_article.html 页面导入的文章数据
+    const importedTitle = localStorage.getItem('importedArticleTitle');
+    const importedContent = localStorage.getItem('importedArticleContent');
+    
+    if (importedTitle && importedContent) {
+        // 填充导入的文章标题和内容
+        titleInput.value = importedTitle;
+        contentInput.value = importedContent;
+        
+        // 清除 localStorage 中的数据，避免重复导入
+        localStorage.removeItem('importedArticleTitle');
+        localStorage.removeItem('importedArticleContent');
+        
+        // 显示导入成功提示
+        showAlert('文章已成功导入，可以继续生成阅读理解', 'success');
+    }
     
     // 生成阅读理解
     generateBtn.addEventListener('click', function() {
@@ -305,13 +450,24 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 获取选项
         const aiModel = document.getElementById('ai-model').value;
+        const questionCount = parseInt(document.getElementById('question-count').value);
+        
         const options = {
             vocabulary: document.getElementById('option-vocabulary').checked,
             questions: document.getElementById('option-questions').checked,
             translation: document.getElementById('option-translation').checked,
             answers: document.getElementById('option-answers').checked,
-            model: aiModel
+            keyWords: document.getElementById('option-key-words').checked,
+            phonetic: document.getElementById('option-phonetic').checked,
+            model: aiModel,
+            questionCount: questionCount, // 使用选择的问题数量
+            withOptions: true // 添加选项标志，表示每个问题需要生成4个选项
         };
+        
+        // 如果启用了重点单词且有手动输入，则添加到选项中
+        if (options.keyWords && document.getElementById('manual-key-words').value.trim()) {
+            options.manualKeyWords = document.getElementById('manual-key-words').value.trim().split(',').map(word => word.trim());
+        }
         
         // 显示加载指示器
         loadingIndicator.style.display = 'block';
@@ -354,6 +510,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // AI生成语料
+    generateContentBtn.addEventListener('click', function() {
+        const title = titleInput.value.trim();
+        
+        if (!title) {
+            showAlert('请先输入文章标题', 'error');
+            return;
+        }
+        
+        // 获取选择的AI模型
+        const aiModel = document.getElementById('ai-model').value;
+        
+        // 跳转到lexile_article.html页面
+        window.location.href = '/lexile_article';
+    });
+    
     // 导出PDF
     exportPdfBtn.addEventListener('click', function() {
         if (previewArea.style.display === 'none') {
@@ -363,6 +535,47 @@ document.addEventListener('DOMContentLoaded', function() {
         
         showAlert('PDF导出功能即将实现', 'success');
         // 这里将来实现PDF导出功能
+    });
+    
+    // 应用格式调整
+    applyFormatBtn.addEventListener('click', function() {
+        if (previewArea.style.display === 'none') {
+            showAlert('请先生成阅读理解内容', 'error');
+            return;
+        }
+        
+        const fontSize = document.getElementById('font-size').value;
+        const textColor = document.getElementById('text-color').value;
+        const keywordColor = document.getElementById('keyword-color').value;
+        const lineHeight = document.getElementById('line-height').value;
+        const fontFamily = document.getElementById('font-family').value;
+        const backgroundColor = document.getElementById('background-color').value;
+        
+        // 获取预览内容区域
+        const previewContentDiv = document.getElementById('preview-content');
+        
+        // 只对文章正文内容应用格式调整
+        const articleContentDivs = previewContentDiv.querySelectorAll('.article-content');
+        articleContentDivs.forEach(articleDiv => {
+            // 应用字体大小、文本颜色、行高和字体
+            const contentTextDiv = articleDiv.querySelector('.content-text');
+            if (contentTextDiv) {
+                contentTextDiv.style.fontSize = `${fontSize}px`;
+                contentTextDiv.style.color = textColor;
+                contentTextDiv.style.lineHeight = lineHeight;
+                contentTextDiv.style.fontFamily = fontFamily;
+                contentTextDiv.style.backgroundColor = backgroundColor;
+            }
+        });
+        
+        // 应用重点单词标记颜色（只在文章正文中）
+        const articleKeywords = previewContentDiv.querySelectorAll('.article-content .keyword');
+        articleKeywords.forEach(element => {
+            element.style.color = keywordColor;
+            element.style.fontWeight = 'bold';
+        });
+        
+        showAlert('格式已应用', 'success');
     });
     
     // 显示提示信息
@@ -411,6 +624,41 @@ document.addEventListener('DOMContentLoaded', function() {
         
         html += `</div></div>`;
         
+        // 添加重点单词部分
+        if (document.getElementById('option-key-words').checked && data.keyWords && data.keyWords.length > 0) {
+            html += `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #1976d2;">重点单词</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+            `;
+            
+            data.keyWords.forEach(word => {
+                if (typeof word === 'object') {
+                    const phonetic = document.getElementById('option-phonetic').checked && word.phonetic ? ` <span style="color: #666;">${word.phonetic}</span>` : '';
+                    html += `
+                        <div style="padding: 8px 15px; background: #f5f5f5; border-radius: 4px;">
+                            <span class="keyword" style="font-weight: bold;">${word.word}</span>${phonetic}
+                            <div>${word.translation || ''}</div>
+                        </div>
+                    `;
+                } else if (typeof word === 'string') {
+                    // 如果只有单词字符串，尝试从词汇表中找到对应信息
+                    const vocabItem = data.vocabulary ? data.vocabulary.find(v => v.word.toLowerCase() === word.toLowerCase()) : null;
+                    const translation = vocabItem ? vocabItem.translation : '';
+                    const phonetic = document.getElementById('option-phonetic').checked && vocabItem && vocabItem.phonetic ? ` <span style="color: #666;">${vocabItem.phonetic}</span>` : '';
+                    
+                    html += `
+                        <div style="padding: 8px 15px; background: #f5f5f5; border-radius: 4px;">
+                            <span class="keyword" style="font-weight: bold;">${word}</span>${phonetic}
+                            <div>${translation}</div>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `</div></div>`;
+        }
+        
         // 添加问题部分
         if (document.getElementById('option-questions').checked) {
             html += `
@@ -455,128 +703,175 @@ document.addEventListener('DOMContentLoaded', function() {
         return html;
     }
     
-    // 使用API返回的数据生成预览HTML
+    // 从API响应生成预览HTML
     function generatePreviewHTMLFromAPI(data) {
-        // 分析文章内容，提取段落
-        const paragraphs = data.content.split('\n').filter(p => p.trim().length > 0);
-        
-        // 获取使用的AI模型
-        const modelName = data.model || 'openai';
-        let modelDisplayName = '';
-        
-        switch(modelName) {
-            case 'openai':
-                modelDisplayName = 'OpenAI';
-                break;
-            case 'deepseek':
-                modelDisplayName = 'DeepSeek';
-                break;
-            case 'doubao':
-                modelDisplayName = '豆包';
-                break;
-            case 'qianwen':
-                modelDisplayName = '通义千问';
-                break;
-            default:
-                modelDisplayName = modelName;
-        }
-        
-        // 构建HTML
-        let html = `
-            <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
-                <h2 style="color: #1976d2; text-align: center;">${data.title}</h2>
-                <div style="text-align: center; margin-bottom: 10px; color: #666;">由 ${modelDisplayName} 生成</div>
-                <div style="line-height: 1.6;">
-        `;
-        
-        // 添加文章内容
-        paragraphs.forEach(paragraph => {
-            html += `<p>${paragraph}</p>`;
-        });
-        
-        html += `</div></div>`;
-        
-        // 添加问题部分
-        if (document.getElementById('option-questions').checked && data.questions && data.questions.length > 0) {
-            html += `
-                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
-                    <h3 style="color: #1976d2;">Reading Comprehension Questions</h3>
-                    <ul style="line-height: 1.6;">
+        try {
+            // 分析文章内容，提取段落
+            const paragraphs = data.content.split('\n').filter(p => p.trim().length > 0);
+            
+            // 获取使用的AI模型
+            const modelName = data.model || 'openai';
+            let modelDisplayName = '';
+            
+            switch(modelName) {
+                case 'openai':
+                    modelDisplayName = 'OpenAI';
+                    break;
+                case 'deepseek':
+                    modelDisplayName = 'DeepSeek';
+                    break;
+                case 'doubao':
+                    modelDisplayName = '豆包';
+                    break;
+                case 'qianwen':
+                    modelDisplayName = '通义千问';
+                    break;
+                case 'siliconflow':
+                    modelDisplayName = '硅基流动';
+                    break;
+                default:
+                    modelDisplayName = modelName;
+            }
+            
+            // 提取重点单词（如果有）
+            let keyWords = [];
+            if (data.keyWords && Array.isArray(data.keyWords)) {
+                keyWords = data.keyWords;
+            } else if (data.vocabulary && Array.isArray(data.vocabulary)) {
+                // 如果没有专门的重点单词，使用词汇表中的单词
+                keyWords = data.vocabulary.map(item => item.word);
+            }
+            
+            // 构建HTML
+            let html = `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;" class="article-content">
+                    <h2 style="color: #1976d2; text-align: center;">${data.title}</h2>
+                    <div style="line-height: 1.6;" class="content-text">
             `;
             
-            data.questions.forEach(question => {
-                html += `<li>${question}</li>`;
-            });
+            // 添加文章内容，并标记重点单词
+            let articleContent = paragraphs.join('</p><p>');
             
-            html += `</ul></div>`;
-        }
-        
-        // 添加词汇表部分
-        if (document.getElementById('option-vocabulary').checked && data.vocabulary && data.vocabulary.length > 0) {
-            html += `
-                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
-                    <h3 style="color: #1976d2;">Vocabulary</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Word</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Translation</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Definition</th>
-                        </tr>
-            `;
+            // 标记重点单词
+            if (keyWords.length > 0) {
+                keyWords.forEach(word => {
+                    if (typeof word === 'string') {
+                        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                        articleContent = articleContent.replace(regex, `<span class="keyword">$&</span>`);
+                    }
+                });
+            }
             
-            data.vocabulary.forEach(item => {
-                html += `
-                    <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${item.word}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${item.translation}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${item.definition}</td>
-                    </tr>
-                `;
-            });
-            
-            html += `</table></div>`;
-        }
-        
-        // 添加答案部分
-        if (document.getElementById('option-answers').checked && data.answers && data.answers.length > 0) {
-            html += `
-                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
-                    <h3 style="color: #1976d2;">Answers</h3>
-                    <div style="line-height: 1.6;">
-            `;
-            
-            data.answers.forEach(answer => {
-                html += `<p>${answer}</p>`;
-            });
-            
+            html += `<p>${articleContent}</p>`;
             html += `</div></div>`;
-        }
-        
-        // 添加翻译部分
-        if (document.getElementById('option-translation').checked && data.translation) {
-            html += `
-                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
-                    <h3 style="color: #1976d2;">Translation</h3>
-                    <div style="line-height: 1.6;">
-                        <p>${data.translation.replace(/\n/g, '<br>')}</p>
+            
+            // 添加问题部分
+            if (document.getElementById('option-questions').checked && data.questions && data.questions.length > 0) {
+                html += `
+                    <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                        <h3 style="color: #1976d2;">阅读理解问题</h3>
+                        <ol style="line-height: 1.6;">
+                `;
+                
+                data.questions.forEach((question, index) => {
+                    // 检查问题是否是对象格式（包含问题和选项）
+                    if (typeof question === 'object' && question.question) {
+                        let questionHtml = `<li>${question.question}</li>`;
+                        
+                        // 如果有选项，添加选项
+                        if (question.options && question.options.length > 0) {
+                            questionHtml += `<div class="question-options">`;
+                            question.options.forEach((option, optIndex) => {
+                                const optionLabel = String.fromCharCode(65 + optIndex); // A, B, C, D
+                                questionHtml += `<div class="question-option">${optionLabel}. ${option}</div>`;
+                            });
+                            questionHtml += `</div>`;
+                        }
+                        
+                        html += questionHtml;
+                    } else {
+                        // 如果是简单字符串格式
+                        html += `<li>${question}</li>`;
+                    }
+                });
+                
+                html += `</ol></div>`;
+            }
+            
+            // 添加词汇表部分
+            if (document.getElementById('option-vocabulary').checked && data.vocabulary && data.vocabulary.length > 0) {
+                html += `
+                    <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                        <h3 style="color: #1976d2;">词汇</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Word</th>
+                                ${document.getElementById('option-phonetic').checked ? '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Phonetic</th>' : ''}
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Translation</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Definition</th>
+                            </tr>
+                `;
+                
+                data.vocabulary.forEach(item => {
+                    html += `
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;" class="keyword">${item.word}</td>
+                            ${document.getElementById('option-phonetic').checked ? 
+                                `<td style="border: 1px solid #ddd; padding: 8px;">${item.phonetic || ''}</td>` : ''}
+                            <td style="border: 1px solid #ddd; padding: 8px;">${item.translation}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${item.definition}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `</table></div>`;
+            }
+            
+            // 添加答案部分
+            if (document.getElementById('option-answers').checked && data.answers && data.answers.length > 0) {
+                html += `
+                    <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                        <h3 style="color: #1976d2;">答案</h3>
+                        <ol style="line-height: 1.6;">
+                `;
+                
+                data.answers.forEach(answer => {
+                    html += `<li>${answer}</li>`;
+                });
+                
+                html += `</ol></div>`;
+            }
+            
+            // 添加翻译部分
+            if (document.getElementById('option-translation').checked && data.translation) {
+                html += `
+                    <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                        <h3 style="color: #1976d2;">参考译文</h3>
+                        <div style="line-height: 1.6;">
+                            <p>${data.translation.replace(/\n/g, '<br>')}</p>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
+            
+            // 如果解析失败，显示原始生成内容
+            if (data.raw_generated_content && 
+                ((data.questions && data.questions.length === 1 && data.questions[0].includes('解析失败')) || 
+                 (data.vocabulary && data.vocabulary.length === 1 && data.vocabulary[0].word.includes('解析失败')))) {
+                html += `
+                    <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
+                        <h3 style="color: #1976d2;">原始生成内容</h3>
+                        <pre style="white-space: pre-wrap; line-height: 1.6; background: #f5f5f5; padding: 15px; border-radius: 5px;">${data.raw_generated_content}</pre>
+                    </div>
+                `;
+            }
+            
+            return html;
+        } catch (error) {
+            console.error('Error generating preview HTML:', error);
+            // 如果解析失败，直接显示原始内容
+            return `<pre>${JSON.stringify(data, null, 2)}</pre>`;
         }
-        
-        // 如果解析失败，显示原始生成内容
-        if (data.raw_generated_content && 
-            ((data.questions && data.questions.length === 1 && data.questions[0].includes('解析失败')) || 
-             (data.vocabulary && data.vocabulary.length === 1 && data.vocabulary[0].word.includes('解析失败')))) {
-            html += `
-                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;">
-                    <h3 style="color: #1976d2;">原始生成内容</h3>
-                    <pre style="white-space: pre-wrap; line-height: 1.6; background: #f5f5f5; padding: 15px; border-radius: 5px;">${data.raw_generated_content}</pre>
-                </div>
-            `;
-        }
-        
-        return html;
     }
 });
 </script>
