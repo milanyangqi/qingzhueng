@@ -93,7 +93,14 @@ def my_articles():
     if 'user_id' not in session:
         return redirect(url_for('index'))
     
-    return render_template('my_articles.html')
+    # 获取当前用户的文章
+    try:
+        # 查询当前用户的所有文章，按创建时间降序排列
+        articles = Article.query.filter_by(user_id=session['user_id']).order_by(Article.created_at.desc()).all()
+        return render_template('my_articles.html', articles=articles)
+    except Exception as e:
+        print(f"获取用户文章失败: {str(e)}")
+        return render_template('my_articles.html', articles=[])
 
 # 路由：阅读排版页面
 @app.route('/formatting')
@@ -183,7 +190,29 @@ def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    return render_template('profile.html')
+    # 获取用户信息
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            session.clear()
+            return redirect(url_for('index'))
+        
+        # 获取用户资料
+        profile = UserProfile.query.filter_by(user_id=user.id).first()
+        
+        # 如果用户资料不存在，创建一个空的资料
+        if not profile:
+            profile = UserProfile(user_id=user.id)
+            db.session.add(profile)
+            db.session.commit()
+        
+        # 将用户资料添加到用户对象中
+        user.profile = profile
+        
+        return render_template('profile.html', user=user)
+    except Exception as e:
+        print(f"获取用户资料失败: {str(e)}")
+        return redirect(url_for('dashboard'))
 
 # 路由：获取用户资料
 @app.route('/api/profile', methods=['GET'])
@@ -269,6 +298,17 @@ def article_detail(article_id):
     article = Article.query.get_or_404(article_id)
     return render_template('article_detail.html', article=article)
 
+# 路由：编辑文章页面
+@app.route('/edit_article/<int:article_id>')
+def edit_article_page(article_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    article = Article.query.get_or_404(article_id)
+    # 仅作者或管理员可编辑
+    if article.user_id != session['user_id'] and not session.get('is_admin', False):
+        return redirect(url_for('my_articles'))
+    return render_template('edit_article.html', article=article)
+
 # 路由：创建文章页面
 @app.route('/create_article')
 def create_article_page():
@@ -295,7 +335,7 @@ def create_article():
         db.session.add(new_article)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': '文章创建成功', 'article_id': new_article.id})
+        return jsonify({'success': True, 'article_id': new_article.id})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'创建失败: {str(e)}'})
@@ -1422,10 +1462,36 @@ Jupiter is the largest planet in our solar system. It has a Great Red Spot, whic
         return jsonify({'success': False, 'message': f'AI API调用失败: {str(e)}'})
 
 
-# 创建数据库表
-with app.app_context():
-    db.create_all()
+# 路由：编辑文章API
+@app.route('/api/articles/<int:article_id>', methods=['PUT'])
+def edit_article(article_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '请先登录'})
+    data = request.get_json()
+    article = Article.query.get(article_id)
+    if not article:
+        return jsonify({'success': False, 'message': '文章不存在'})
+    if article.user_id != session['user_id'] and not session.get('is_admin', False):
+        return jsonify({'success': False, 'message': '没有权限编辑此文章'})
+    try:
+        article.title = data.get('title', article.title)
+        article.content = data.get('content', article.content)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '文章更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'})
 
-# 启动Flask应用
+# 路由：检查登录状态
+@app.route('/api/check_login', methods=['GET'])
+def check_login():
+    logged_in = 'user_id' in session
+    return jsonify({
+        'logged_in': logged_in,
+        'user_id': session.get('user_id') if logged_in else None
+    })
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True, host='0.0.0.0', port=5001)
