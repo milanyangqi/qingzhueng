@@ -54,7 +54,7 @@ python backend/app.py
 docker-compose up -d
 ```
 
-访问地址：http://localhost:1120
+访问地址：http://localhost:5001
 
 ## 主要模块
 

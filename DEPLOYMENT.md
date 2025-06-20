@@ -59,12 +59,12 @@
    docker build -t qingzhu-english .
    
    # 运行容器
-   docker run -d -p 1120:1120 --name qingzhu-english qingzhu-english
+   docker run -d -p 5001:5001 --name qingzhu-english qingzhu-english
    ```
 
 ## 访问信息
 
-- **网站地址**: http://localhost:1120
+- **网站地址**: http://localhost:5001
 - **默认管理员账号**: admin
 - **默认管理员密码**: admin123
 
@@ -138,7 +138,7 @@ export SECRET_KEY=your-very-secure-secret-key
 export DATABASE_URL=sqlite:///data/qingzhu_english.db
 
 # 其他配置
-export PORT=1120
+export PORT=5001
 ```
 
 ### 数据库
@@ -183,7 +183,7 @@ server {
     server_name your-domain.com;
     
     location / {
-        proxy_pass http://localhost:1120;
+        proxy_pass http://localhost:5001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -244,7 +244,7 @@ docker-compose up -d --build
 1. **端口被占用**
    ```bash
    # 查看端口占用
-   lsof -i :1120
+   lsof -i :5001
    
    # 修改端口
    # 编辑 docker-compose.yml 中的端口映射
@@ -266,7 +266,7 @@ docker-compose up -d --build
    pip install gunicorn
    
    # 启动应用
-   gunicorn -w 4 -b 0.0.0.0:1120 backend.app:app
+   gunicorn -w 4 -b 0.0.0.0:5001 backend.app:app
    ```
 
 2. **启用缓存**
