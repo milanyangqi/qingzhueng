@@ -230,6 +230,196 @@ def my_articles():
             app.logger.info("Returning empty article list as last resort")
             return render_template('my_articles.html', articles=[])
 
+# 路由：历史文章页面
+@app.route('/history_articles')
+def history_articles():
+    # 检查用户是否登录
+    if 'user_id' not in session:
+        app.logger.warning("User not logged in, redirecting to index")
+        return redirect(url_for('index'))
+    
+    app.logger.info(f"User {session.get('username', 'unknown')} (ID: {session['user_id']}) accessing history_articles route")
+    
+    # 获取所有文章
+    try:
+        # 查询所有文章，按创建时间降序排列
+        articles = db.session.query(Article, User.username).join(User, Article.user_id == User.id).order_by(Article.created_at.desc()).all()
+        
+        # 将查询结果转换为模板可用的格式
+        formatted_articles = []
+        for article, username in articles:
+            article_dict = {
+                'id': article.id,
+                'title': article.title,
+                'content': article.content,
+                'processed_content': article.processed_content,
+                'keywords': article.keywords,
+                'user_id': article.user_id,
+                'created_at': article.created_at,
+                'updated_at': article.updated_at,
+                'username': username
+            }
+            formatted_articles.append(article_dict)
+        
+        app.logger.info(f"Successfully fetched {len(formatted_articles)} articles for history page.")
+        return render_template('history_articles.html', articles=formatted_articles)
+    except Exception as e:
+        app.logger.error(f"获取历史文章失败: {str(e)}")
+        # 如果出错，尝试使用更基本的查询
+        try:
+            app.logger.info("Falling back to raw SQL query for history articles")
+            # 使用原始SQL查询，选择模板需要的所有列
+            from sqlalchemy import text
+            raw_articles = db.session.execute(
+                text("""SELECT a.id, a.title, a.content, a.user_id, a.created_at, a.updated_at, a.processed_content, a.keywords, u.username 
+                     FROM article a JOIN user u ON a.user_id = u.id ORDER BY a.created_at DESC""")
+            ).fetchall()
+            
+            # 将查询结果转换为与Article对象行为相似的对象列表
+            formatted_articles = []
+            
+            class AttrDict(dict):
+                def __init__(self, *args, **kwargs):
+                    super(AttrDict, self).__init__(*args, **kwargs)
+                    self.__dict__ = self
+                
+                # 添加strftime方法以模拟datetime对象的行为
+                def strftime(self, format_str):
+                    if isinstance(self.get('created_at'), datetime):
+                        return self.get('created_at').strftime(format_str)
+                    return str(self.get('created_at'))
+
+            for row in raw_articles:
+                created_at_obj = row[4]
+                if isinstance(created_at_obj, str):
+                    try:
+                        if '.' in created_at_obj:
+                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S.%f')
+                        else:
+                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        app.logger.error(f"Could not parse date string: {created_at_obj}")
+                        created_at_obj = datetime.now() # Fallback
+
+                # 确保关键词是有效的JSON字符串
+                keywords = row[7] or '[]'
+                if not isinstance(keywords, str):
+                    try:
+                        keywords = json.dumps(keywords)
+                    except:
+                        app.logger.error(f"Error converting keywords to JSON string: {keywords}")
+                        keywords = '[]'
+
+                # 确保 updated_at 也是正确的 datetime 对象
+                updated_at_obj = row[5]
+                if isinstance(updated_at_obj, str):
+                    try:
+                        if '.' in updated_at_obj:
+                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S.%f')
+                        else:
+                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        app.logger.error(f"Could not parse updated_at date string: {updated_at_obj}")
+                        updated_at_obj = None
+                
+                article_data = {
+                    'id': row[0],
+                    'title': row[1],
+                    'content': row[2],
+                    'user_id': row[3],
+                    'created_at': created_at_obj,
+                    'updated_at': updated_at_obj,
+                    'processed_content': row[6],
+                    'keywords': keywords,
+                    'username': row[8]
+                }
+                formatted_articles.append(AttrDict(article_data))
+
+            app.logger.info(f"Fallback query processed {len(formatted_articles)} history articles.")
+            return render_template('history_articles.html', articles=formatted_articles)
+        except Exception as e2:
+            app.logger.error(f"历史文章备用查询也失败: {str(e2)}")
+            # 尝试最基本的方式返回空列表
+            app.logger.info("Returning empty article list for history page as last resort")
+            return render_template('history_articles.html', articles=[])
+            
+            app.logger.info(f"Fallback query fetched {len(raw_articles)} raw articles for user {session['user_id']}.")
+
+            # 将查询结果转换为与Article对象行为相似的对象列表
+            articles = []
+            
+            class AttrDict(dict):
+                def __init__(self, *args, **kwargs):
+                    super(AttrDict, self).__init__(*args, **kwargs)
+                    self.__dict__ = self
+                
+                # 添加strftime方法以模拟datetime对象的行为
+                def strftime(self, format_str):
+                    if isinstance(self.get('created_at'), datetime):
+                        return self.get('created_at').strftime(format_str)
+                    return str(self.get('created_at'))
+
+            for row in raw_articles:
+                created_at_obj = row[4]
+                if isinstance(created_at_obj, str):
+                    try:
+                        if '.' in created_at_obj:
+                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S.%f')
+                        else:
+                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                         app.logger.error(f"Could not parse date string: {created_at_obj}")
+                         created_at_obj = datetime.now() # Fallback
+
+                # 确保关键词是有效的JSON字符串
+                keywords = row[7] or '[]'
+                if not isinstance(keywords, str):
+                    try:
+                        keywords = json.dumps(keywords)
+                    except:
+                        app.logger.error(f"Error converting keywords to JSON string: {keywords}")
+                        keywords = '[]'
+
+                # 确保 updated_at 也是正确的 datetime 对象
+                updated_at_obj = row[5]
+                if isinstance(updated_at_obj, str):
+                    try:
+                        if '.' in updated_at_obj:
+                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S.%f')
+                        else:
+                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        app.logger.error(f"Could not parse updated_at date string: {updated_at_obj}")
+                        updated_at_obj = None
+                
+                article_data = {
+                    'id': row[0],
+                    'title': row[1],
+                    'content': row[2],
+                    'user_id': row[3],
+                    'created_at': created_at_obj,
+                    'updated_at': updated_at_obj,
+                    'processed_content': row[6],
+                    'keywords': keywords
+                }
+                articles.append(AttrDict(article_data))
+
+            app.logger.info(f"Fallback query processed {len(articles)} articles.")
+            for article in articles:
+                try:
+                    # 格式化日期以避免datetime序列化问题
+                    created_at_str = article.created_at.strftime('%Y-%m-%d %H:%M:%S.%f') if hasattr(article.created_at, 'strftime') else str(article.created_at)
+                    app.logger.info(f"Fallback Article ID: {article.id}, Title: {article.title}, Created At: {created_at_str}, Keywords: {article.keywords}")
+                except Exception as e3:
+                    app.logger.error(f"Error logging article info: {str(e3)}")
+
+            return render_template('my_articles.html', articles=articles)
+        except Exception as e2:
+            app.logger.error(f"备用查询也失败: {str(e2)}")
+            # 尝试最基本的方式返回空列表
+            app.logger.info("Returning empty article list as last resort")
+            return render_template('my_articles.html', articles=[])
+
 # 路由：获取单篇文章详情
 @app.route('/get_article/<int:article_id>')
 def get_article(article_id):
@@ -238,11 +428,15 @@ def get_article(article_id):
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        # 尝试从数据库获取文章
-        article = Article.query.filter_by(id=article_id, user_id=session['user_id']).first()
+        # 尝试从数据库获取文章，不再限制只能查看自己的文章
+        article = Article.query.filter_by(id=article_id).first()
         
         if not article:
             return jsonify({'error': 'Article not found'}), 404
+        
+        # 获取文章作者信息
+        user = User.query.get(article.user_id)
+        username = user.username if user else 'Unknown'
         
         # 确保关键词是JSON格式
         keywords = []
@@ -262,6 +456,8 @@ def get_article(article_id):
             'content': article.content,
             'processed_content': article.processed_content,
             'keywords': keywords,
+            'user_id': article.user_id,
+            'username': username,
             'created_at': article.created_at.isoformat(),
             'updated_at': article.updated_at.isoformat() if article.updated_at else None
         })

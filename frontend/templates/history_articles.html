@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的文章 - 青竹英语</title>
+    <title>历史文章 - 青竹英语</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -31,10 +31,16 @@
                         <span>时文阅读</span>
                     </a>
                 </li>
-                <li class="nav-item active">
+                <li class="nav-item">
                     <a href="{{ url_for('my_articles') }}">
                         <i class="fas fa-file-alt"></i>
                         <span>我的文章</span>
+                    </a>
+                </li>
+                <li class="nav-item active">
+                    <a href="{{ url_for('history_articles') }}">
+                        <i class="fas fa-history"></i>
+                        <span>历史文章</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -74,13 +80,8 @@
         <!-- 主内容区 -->
         <main class="main-content">
             <div class="content-header">
-                <h1><i class="fas fa-file-alt"></i> 我的文章</h1>
-                <p class="subtitle">管理您保存的时文阅读文章</p>
-                <div class="header-actions">
-                    <a href="{{ url_for('reading') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> 新建文章
-                    </a>
-                </div>
+                <h1><i class="fas fa-history"></i> 历史文章</h1>
+                <p class="subtitle">浏览所有用户分享的文章</p>
             </div>
             
             <div class="articles-container">
@@ -119,6 +120,10 @@
                             <div class="article-header">
                                 <h3 class="article-title">{{ article.title }}</h3>
                                 <div class="article-meta">
+                                    <span class="article-author">
+                                        <i class="fas fa-user"></i>
+                                        {{ article.username }}
+                                    </span>
                                     <span class="article-date">
                                         <i class="fas fa-calendar"></i>
                                         {{ article.created_at.strftime('%Y-%m-%d %H:%M') }}
@@ -150,12 +155,11 @@
                                 <button class="btn btn-sm btn-primary" onclick="viewArticle({{ article.id }})">
                                     <i class="fas fa-eye"></i> 查看
                                 </button>
-                                <button class="btn btn-sm btn-secondary" onclick="editArticle({{ article.id }})">
-                                    <i class="fas fa-edit"></i> 编辑
-                                </button>
+                                {% if session.is_admin or article.user_id == session.user_id %}
                                 <button class="btn btn-sm btn-danger" onclick="deleteArticle({{ article.id }})">
                                     <i class="fas fa-trash"></i> 删除
                                 </button>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -166,11 +170,8 @@
                         <div class="empty-icon">
                             <i class="fas fa-file-alt"></i>
                         </div>
-                        <h3>还没有文章</h3>
-                        <p>开始您的第一篇时文阅读吧！</p>
-                        <a href="{{ url_for('reading') }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> 创建第一篇文章
-                        </a>
+                        <h3>暂无历史文章</h3>
+                        <p>目前还没有用户分享的文章</p>
                     </div>
                 {% endif %}
             </div>
@@ -185,6 +186,7 @@
                 <div class="article-detail-header">
                     <h2 id="modalArticleTitle"></h2>
                     <div class="article-detail-meta">
+                        <span id="modalArticleAuthor"></span>
                         <span id="modalArticleDate"></span>
                     </div>
                 </div>
@@ -199,15 +201,6 @@
                         <h4><i class="fas fa-star"></i> 重点单词</h4>
                         <div id="modalArticleKeywords" class="keywords-list"></div>
                     </div>
-                </div>
-                
-                <div class="article-detail-actions">
-                    <button class="btn btn-secondary" onclick="closeArticleModal()">
-                        <i class="fas fa-times"></i> 关闭
-                    </button>
-                    <button class="btn btn-primary" onclick="editCurrentArticle()">
-                        <i class="fas fa-edit"></i> 编辑文章
-                    </button>
                 </div>
             </div>
         </div>
@@ -232,9 +225,170 @@
     <div id="message" class="message"></div>
     
     <script>
-        // 文章数据
-        const articlesData = {{ articles|tojson if articles else '[]'|safe }};
+        // 全局变量
+        let currentArticleId = null;
+        
+        // 显示消息
+        function showMessage(text, type = 'info') {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = 'block';
+            
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 搜索和排序功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const sortSelect = document.getElementById('sortSelect');
+            const articlesGrid = document.getElementById('articlesGrid');
+            const articleCards = Array.from(document.querySelectorAll('.article-card'));
+            
+            // 搜索功能
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                filterArticles(searchTerm, sortSelect.value);
+            });
+            
+            // 排序功能
+            sortSelect.addEventListener('change', function() {
+                filterArticles(searchInput.value.toLowerCase().trim(), this.value);
+            });
+            
+            function filterArticles(searchTerm, sortOption) {
+                // 过滤文章
+                const filteredArticles = articleCards.filter(card => {
+                    const title = card.getAttribute('data-title');
+                    return title.includes(searchTerm);
+                });
+                
+                // 排序文章
+                filteredArticles.sort((a, b) => {
+                    if (sortOption === 'newest') {
+                        return new Date(b.getAttribute('data-date')) - new Date(a.getAttribute('data-date'));
+                    } else if (sortOption === 'oldest') {
+                        return new Date(a.getAttribute('data-date')) - new Date(b.getAttribute('data-date'));
+                    } else if (sortOption === 'title') {
+                        return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+                    }
+                });
+                
+                // 重新添加到网格
+                articlesGrid.innerHTML = '';
+                filteredArticles.forEach(card => {
+                    articlesGrid.appendChild(card);
+                });
+            }
+        });
+        
+        // 查看文章详情
+        function viewArticle(articleId) {
+            currentArticleId = articleId; // 设置当前文章ID
+            fetch(`/get_article/${articleId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    // 填充模态框内容
+                    document.getElementById('modalArticleTitle').textContent = data.title;
+                    document.getElementById('modalArticleAuthor').innerHTML = `<i class="fas fa-user"></i> ${data.username || 'Unknown'}`;
+                    document.getElementById('modalArticleDate').innerHTML = `<i class="fas fa-calendar"></i> ${new Date(data.created_at).toLocaleString()}`;
+                    
+                    // 显示文章内容
+                    if (data.processed_content) {
+                        document.getElementById('modalArticleContent').innerHTML = data.processed_content;
+                    } else {
+                        document.getElementById('modalArticleContent').textContent = data.content;
+                    }
+                    
+                    // 显示关键词
+                    const keywordsContainer = document.getElementById('modalArticleKeywords');
+                    keywordsContainer.innerHTML = '';
+                    
+                    if (data.keywords && data.keywords.length > 0) {
+                        data.keywords.forEach(keyword => {
+                            const keywordEl = document.createElement('div');
+                            keywordEl.className = 'keyword-item';
+                            keywordEl.innerHTML = `
+                                <span class="keyword-word">${keyword.word}</span>
+                                <span class="keyword-translation">${keyword.translation || ''}</span>
+                            `;
+                            keywordsContainer.appendChild(keywordEl);
+                        });
+                    } else {
+                        keywordsContainer.innerHTML = '<p>暂无关键词</p>';
+                    }
+                    
+                    // 显示模态框
+                    document.getElementById('articleModal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('获取文章详情失败:', error);
+                    alert('获取文章详情失败，请稍后再试');
+                });
+        }
+        
+        // 删除文章
+        function deleteArticle(articleId) {
+            currentArticleId = articleId;
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+        
+        // 关闭删除确认模态框
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+        
+        // 确认删除文章
+        async function confirmDelete() {
+            if (!currentArticleId) return;
+            
+            try {
+                const response = await fetch(`/api/articles/${currentArticleId}`, {
+                    method: 'DELETE',
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('文章已成功删除', 'success');
+                    // 关闭模态框
+                    closeDeleteModal();
+                    // 刷新页面
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showMessage(data.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除文章出错:', error);
+                showMessage('删除文章失败', 'error');
+            }
+        }
+        
+        // 关闭模态框
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        });
     </script>
-    <script src="{{ url_for('static', filename='js/articles.js') }}"></script>
 </body>
 </html>
