@@ -159,20 +159,19 @@ init_admin() {
     # 检查是否在Docker环境中运行
     if [ "$1" == "docker" ]; then
         echo -e "${YELLOW}在Docker环境中初始化管理员账号...${NC}"
-        docker-compose exec web python -c "
- import sys
- sys.path.append('/app')
- from backend.app import db, User, app
- with app.app_context():
-     admin = User.query.filter_by(username='admin').first()
-     if admin:
-         print('管理员账号已存在')
-     else:
-         admin = User(username='admin', email='admin@example.com', is_admin=True)
-         admin.set_password('admin123')
-         db.session.add(admin)
-         db.session.commit()
-         print('管理员账号创建成功')
+        docker-compose exec web python -c "import sys
+sys.path.append('/app')
+from backend.app import db, User, app
+with app.app_context():
+    admin = User.query.filter_by(username='admin').first()
+    if admin:
+        print('管理员账号已存在')
+    else:
+        admin = User(username='admin', email='admin@example.com', is_admin=True)
+        admin.set_password('admin123')
+        db.session.add(admin)
+        db.session.commit()
+        print('管理员账号创建成功')
 "
     else
         echo -e "${YELLOW}在本地环境中初始化管理员账号...${NC}"
@@ -186,20 +185,19 @@ init_admin() {
         source venv/bin/activate || { echo -e "${RED}无法激活虚拟环境${NC}"; exit 1; }
         
         # 执行Python代码初始化管理员账号
-        python -c "
- import sys
- sys.path.append('.')
- from backend.app import db, User, app
- with app.app_context():
-     admin = User.query.filter_by(username='admin').first()
-     if admin:
-         print('管理员账号已存在')
-     else:
-         admin = User(username='admin', email='admin@example.com', is_admin=True)
-         admin.set_password('admin123')
-         db.session.add(admin)
-         db.session.commit()
-         print('管理员账号创建成功')
+        python -c "import sys
+sys.path.append('.')
+from backend.app import db, User, app
+with app.app_context():
+    admin = User.query.filter_by(username='admin').first()
+    if admin:
+        print('管理员账号已存在')
+    else:
+        admin = User(username='admin', email='admin@example.com', is_admin=True)
+        admin.set_password('admin123')
+        db.session.add(admin)
+        db.session.commit()
+        print('管理员账号创建成功')
 "
     fi
     
