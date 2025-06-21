@@ -9,6 +9,10 @@ import requests
 import uuid
 import time
 
+# 设置API密钥
+os.environ['SILICONFLOW_API_KEY'] = 'sk-kvekdhbeqyuimzxkfzzlluiaeftjnuivccoutbfifdppvytu'
+os.environ['DOUBAO_API_KEY'] = '6fbae205-63c0-46c9-9f18-026613652949'
+
 app = Flask(__name__, 
             static_folder='../frontend/static',
             template_folder='../frontend/templates')
@@ -112,123 +116,15 @@ def reading():
     
     return render_template('reading.html')
 
-# 路由：我的文章页面
-@app.route('/my_articles')
-def my_articles():
+# 路由：新闻文章页面
+@app.route('/news_article')
+def news_article():
     # 检查用户是否登录
     if 'user_id' not in session:
-        app.logger.warning("User not logged in, redirecting to index")
         return redirect(url_for('index'))
     
-    app.logger.info(f"User {session.get('username', 'unknown')} (ID: {session['user_id']}) accessing my_articles route")
-    
-    # 获取当前用户的文章
-    try:
-        # 查询当前用户的所有文章，按创建时间降序排列
-        articles = Article.query.filter_by(user_id=session['user_id']).order_by(Article.created_at.desc()).all()
-        app.logger.info(f"Successfully fetched {len(articles)} articles for user {session['user_id']}.")
-        
-        # 记录每篇文章的详细信息
-        for article in articles:
-            app.logger.info(f"Article ID: {article.id}, Title: {article.title}, Created At: {article.created_at}, Keywords type: {type(article.keywords)}")
-            # 检查关键词是否为字符串，如果是，尝试解析为JSON
-            if article.keywords and isinstance(article.keywords, str):
-                try:
-                    json.loads(article.keywords)
-                    app.logger.info(f"Article {article.id} keywords parsed successfully as JSON")
-                except json.JSONDecodeError as je:
-                    app.logger.error(f"Article {article.id} has invalid JSON keywords: {je}")
-        
-        app.logger.info(f"Rendering template with {len(articles)} articles")
-        return render_template('my_articles.html', articles=articles)
-    except Exception as e:
-        app.logger.error(f"获取用户文章失败: {str(e)}")
-        # 如果出错，尝试使用更基本的查询
-        try:
-            app.logger.info("Falling back to raw SQL query")
-            # 使用原始SQL查询，选择模板需要的所有列
-            from sqlalchemy import text
-            raw_articles = db.session.execute(
-                text("SELECT id, title, content, user_id, created_at, updated_at, processed_content, keywords FROM article WHERE user_id = :user_id ORDER BY created_at DESC"),
-                {"user_id": session['user_id']}
-            ).fetchall()
-            
-            app.logger.info(f"Fallback query fetched {len(raw_articles)} raw articles for user {session['user_id']}.")
+    return render_template('news_article.html')
 
-            # 将查询结果转换为与Article对象行为相似的对象列表
-            articles = []
-            
-            class AttrDict(dict):
-                def __init__(self, *args, **kwargs):
-                    super(AttrDict, self).__init__(*args, **kwargs)
-                    self.__dict__ = self
-                
-                # 添加strftime方法以模拟datetime对象的行为
-                def strftime(self, format_str):
-                    if isinstance(self.get('created_at'), datetime):
-                        return self.get('created_at').strftime(format_str)
-                    return str(self.get('created_at'))
-
-            for row in raw_articles:
-                created_at_obj = row[4]
-                if isinstance(created_at_obj, str):
-                    try:
-                        if '.' in created_at_obj:
-                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S.%f')
-                        else:
-                            created_at_obj = datetime.strptime(created_at_obj, '%Y-%m-%d %H:%M:%S')
-                    except ValueError:
-                         app.logger.error(f"Could not parse date string: {created_at_obj}")
-                         created_at_obj = datetime.now() # Fallback
-
-                # 确保关键词是有效的JSON字符串
-                keywords = row[7] or '[]'
-                if not isinstance(keywords, str):
-                    try:
-                        keywords = json.dumps(keywords)
-                    except:
-                        app.logger.error(f"Error converting keywords to JSON string: {keywords}")
-                        keywords = '[]'
-
-                # 确保 updated_at 也是正确的 datetime 对象
-                updated_at_obj = row[5]
-                if isinstance(updated_at_obj, str):
-                    try:
-                        if '.' in updated_at_obj:
-                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S.%f')
-                        else:
-                            updated_at_obj = datetime.strptime(updated_at_obj, '%Y-%m-%d %H:%M:%S')
-                    except ValueError:
-                        app.logger.error(f"Could not parse updated_at date string: {updated_at_obj}")
-                        updated_at_obj = None
-                
-                article_data = {
-                    'id': row[0],
-                    'title': row[1],
-                    'content': row[2],
-                    'user_id': row[3],
-                    'created_at': created_at_obj,
-                    'updated_at': updated_at_obj,
-                    'processed_content': row[6],
-                    'keywords': keywords
-                }
-                articles.append(AttrDict(article_data))
-
-            app.logger.info(f"Fallback query processed {len(articles)} articles.")
-            for article in articles:
-                try:
-                    # 格式化日期以避免datetime序列化问题
-                    created_at_str = article.created_at.strftime('%Y-%m-%d %H:%M:%S.%f') if hasattr(article.created_at, 'strftime') else str(article.created_at)
-                    app.logger.info(f"Fallback Article ID: {article.id}, Title: {article.title}, Created At: {created_at_str}, Keywords: {article.keywords}")
-                except Exception as e3:
-                    app.logger.error(f"Error logging article info: {str(e3)}")
-
-            return render_template('my_articles.html', articles=articles)
-        except Exception as e2:
-            app.logger.error(f"备用查询也失败: {str(e2)}")
-            # 尝试最基本的方式返回空列表
-            app.logger.info("Returning empty article list as last resort")
-            return render_template('my_articles.html', articles=[])
 
 # 路由：历史文章页面
 @app.route('/history_articles')
@@ -540,7 +436,7 @@ def login():
         else:
             return jsonify({'success': False, 'message': '用户名或密码错误'})
     
-    return render_template('login.html')
+    return redirect(url_for('index'))
 
 # 路由：退出登录
 @app.route('/logout')
@@ -670,7 +566,7 @@ def edit_article_page(article_id):
     article = Article.query.get_or_404(article_id)
     # 仅作者或管理员可编辑
     if article.user_id != session['user_id'] and not session.get('is_admin', False):
-        return redirect(url_for('my_articles'))
+        return redirect(url_for('history_articles'))
     return render_template('edit_article.html', article=article)
 
 # 路由：创建文章页面
@@ -735,7 +631,8 @@ def reading_comprehension():
 # 路由：基于词汇的文章生成页面
 @app.route('/lexile_article')
 def lexile_article():
-    return render_template('lexile_article.html')
+    # 重定向到news_article路由，因为功能已合并
+    return redirect(url_for('news_article'))
 
 # 调用OpenAI API生成阅读理解
 def call_openai_api(title, content, options):
@@ -896,8 +793,8 @@ def call_deepseek_api(title, content, options):
     data = {
         "model": "deepseek-chat",
         "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
+            {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
+            {"role": "user", "content": [{"type": "text", "text": user_prompt}]}
         ],
         "temperature": 0.7,
         "max_tokens": 2000
@@ -979,29 +876,40 @@ def call_doubao_api(title, content, options):
 请确保输出是有效的JSON格式，可以直接被解析。
 """
     
-    # 豆包API调用
-    url = "https://api.doubao.com/v1/chat/completions"
+    # 豆包API调用（使用火山引擎官方API）
+    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
     data = {
-        "model": "doubao-chat",
+        "endpoint_id": "ep-20250621182111-tpn6s",
         "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
+            {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
+            {"role": "user", "content": [{"type": "text", "text": user_prompt}]}
         ],
         "temperature": 0.7,
         "max_tokens": 2000
     }
     
     response = requests.post(url, headers=headers, json=data)
-    response_json = response.json()
     
-    if 'choices' in response_json and len(response_json['choices']) > 0:
-        generated_content = response_json['choices'][0]['message']['content']
-    else:
-        raise Exception(f"豆包API调用失败: {response_json}")
+    # 检查响应状态码
+    if response.status_code != 200:
+        raise Exception(f"豆包API调用失败: HTTP状态码 {response.status_code}, 响应内容: {response.text}")
+    
+    # 检查响应内容是否为空
+    if not response.text.strip():
+        raise Exception("豆包API返回了空响应")
+    
+    try:
+        response_json = response.json()
+        if 'choices' in response_json and len(response_json['choices']) > 0:
+            generated_content = response_json['choices'][0]['message']['content']
+        else:
+            raise Exception(f"豆包API调用失败: {response_json}")
+    except json.JSONDecodeError as e:
+        raise Exception(f"豆包API返回了无效的JSON格式: {e}, 响应内容: {response.text}")
     
     return generated_content
 
@@ -1320,7 +1228,7 @@ def generate_comprehension():
             return jsonify({'success': False, 'message': '标题和内容不能为空'})
         
         # 根据选择的模型调用相应的API
-        model = options.get('model', 'openai')
+        model = options.get('model', 'siliconflow')
         try:
             if model == 'openai':
                 generated_content = call_openai_api(title, content, options)
@@ -1372,7 +1280,7 @@ def generate_article_content():
             return jsonify({'success': False, 'message': '无效的请求数据'})
             
         title = data.get('title', '')
-        model = data.get('model', 'openai')
+        model = data.get('model', 'siliconflow')
         
         if not title:
             return jsonify({'success': False, 'message': '文章标题不能为空'})
@@ -1428,41 +1336,36 @@ def generate_article_content():
                 }
                 
                 response = requests.post(url, headers=headers, json=data)
-                response_json = response.json()
                 
-                if 'choices' in response_json and len(response_json['choices']) > 0:
+                # 检查响应状态码
+                if response.status_code != 200:
+                    raise Exception(f"DeepSeek API调用失败: HTTP状态码 {response.status_code}, 响应内容: {response.text}")
+                
+                # 提取生成的内容
+                try:
+                    response_json = response.json()
                     content = response_json['choices'][0]['message']['content']
-                else:
-                    raise Exception(f"DeepSeek API调用失败: {response_json}")
-                
-            elif model == 'doubao':
-                api_key = os.environ.get('DOUBAO_API_KEY')
-                if not api_key:
-                    raise Exception('豆包API密钥未配置')
-                
-                # 豆包API调用
-                url = "https://api.doubao.com/v1/chat/completions"
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {api_key}"
-                }
-                data = {
-                    "model": "doubao-chat",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 1000
-                }
+                except Exception as e:
+                    raise Exception(f"DeepSeek API返回了无效的响应: {e}, 响应内容: {response.text}")
                 
                 response = requests.post(url, headers=headers, json=data)
-                response_json = response.json()
                 
-                if 'choices' in response_json and len(response_json['choices']) > 0:
-                    content = response_json['choices'][0]['message']['content']
-                else:
-                    raise Exception(f"豆包API调用失败: {response_json}")
+                # 检查响应状态码
+                if response.status_code != 200:
+                    raise Exception(f"豆包API调用失败: HTTP状态码 {response.status_code}, 响应内容: {response.text}")
+                
+                # 检查响应内容是否为空
+                if not response.text.strip():
+                    raise Exception("豆包API返回了空响应")
+                
+                try:
+                    response_json = response.json()
+                    if 'choices' in response_json and len(response_json['choices']) > 0:
+                        content = response_json['choices'][0]['message']['content']
+                    else:
+                        raise Exception(f"豆包API调用失败: {response_json}")
+                except json.JSONDecodeError as e:
+                    raise Exception(f"豆包API返回了无效的JSON格式: {e}, 响应内容: {response.text}")
                 
             elif model == 'qianwen':
                 api_key = os.environ.get('QIANWEN_API_KEY')
@@ -1560,7 +1463,7 @@ def generate_lexile_article():
     vocabulary = data.get('vocabulary', '')
     lexile = data.get('lexile', 800)
     word_count = data.get('word_count', 300)
-    model = data.get('model', 'openai')
+    model = data.get('model', 'siliconflow')
     
     if not topic:
         return jsonify({'success': False, 'message': '文章主题不能为空'})
@@ -1679,14 +1582,14 @@ def generate_lexile_article():
             if not api_key:
                 raise Exception('豆包API密钥未配置')
             
-            # 豆包API调用
-            url = "https://api.doubao.com/v1/chat/completions"
+            # 豆包API调用（使用火山引擎官方API）
+            url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {api_key}"
             }
             data = {
-                "model": "doubao-chat",
+                "endpoint_id": "ep-20250621182111-tpn6s",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -1696,12 +1599,25 @@ def generate_lexile_article():
             }
                 
             response = requests.post(url, headers=headers, json=data)
-            response_json = response.json()
             
-            if 'choices' in response_json and len(response_json['choices']) > 0:
-                generated_content = response_json['choices'][0]['message']['content']
-            else:
-                raise Exception(f"豆包API调用失败: {response_json}")
+            # 检查HTTP状态码
+            if response.status_code != 200:
+                raise Exception(f"豆包API调用失败: HTTP状态码 {response.status_code}, 响应内容: {response.text}")
+            
+            # 检查是否有响应内容
+            if not response.text.strip():
+                raise Exception("豆包API返回了空响应")
+            
+            # 尝试解析JSON
+            try:
+                response_json = response.json()
+                
+                if 'choices' in response_json and len(response_json['choices']) > 0:
+                    generated_content = response_json['choices'][0]['message']['content']
+                else:
+                    raise Exception(f"豆包API调用失败: {response_json}")
+            except json.JSONDecodeError as e:
+                raise Exception(f"豆包API返回了无效的JSON格式: {e}, 响应内容: {response.text}")
             
         elif model == 'qianwen':
             api_key = os.environ.get('QIANWEN_API_KEY')
@@ -1737,6 +1653,7 @@ def generate_lexile_article():
                 raise Exception(f"通义千问API调用失败: {response_json}")
             
         elif model == 'siliconflow':
+            # 使用环境变量中的API密钥
             api_key = os.environ.get('SILICONFLOW_API_KEY')
             if not api_key:
                 raise Exception('硅基流动API密钥未配置')

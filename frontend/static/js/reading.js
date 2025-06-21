@@ -53,6 +53,9 @@ async function processText() {
     processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
     processBtn.disabled = true;
     
+    // 滚动到页面顶部，确保用户可以看到处理结果
+    window.scrollTo(0, 0);
+    
     try {
         console.log('发送文本处理请求:', text);
         console.log('请求URL:', '/process_text');
@@ -95,6 +98,9 @@ async function processText() {
             console.log('显示结果区域');
             // 显示结果区域
             document.getElementById('resultSection').style.display = 'block';
+            
+            // 平滑滚动到结果区域
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
             
             // 清除草稿（文本已处理完成）
             localStorage.removeItem('reading_draft');
@@ -139,6 +145,10 @@ function displayProcessedText(text, words) {
     });
     
     container.innerHTML = html;
+    container.style.lineHeight = '1.6';
+    container.style.fontSize = '16px';
+    container.style.color = '#333';
+    container.style.padding = '10px';
     
     // 添加点击事件
     container.querySelectorAll('.annotated-word').forEach(span => {
@@ -146,6 +156,55 @@ function displayProcessedText(text, words) {
             showWordDetails(this.dataset.word, this.dataset.phonetic, this.dataset.translation);
         });
     });
+    
+    // 显示结果区域
+    const resultSection = document.getElementById('resultSection');
+    resultSection.style.display = 'block';
+    
+    // 重新组织页面布局
+    const inputSection = document.querySelector('.input-section');
+    inputSection.style.display = 'none'; // 隐藏输入区域
+    
+    // 创建两列布局
+    const mainContent = document.querySelector('.main-content');
+    mainContent.style.display = 'grid';
+    mainContent.style.gridTemplateColumns = '1fr 350px';
+    mainContent.style.gap = '20px';
+    mainContent.style.alignItems = 'start';
+    
+    // 重新组织卡片布局
+    const titleCard = document.querySelector('.title-card');
+    const contentCard = document.querySelector('.content-card');
+    const keywordsCard = document.querySelector('.keywords-card');
+    const saveCard = document.querySelector('.save-card');
+    
+    // 调整左侧内容区域
+    const leftColumn = document.createElement('div');
+    leftColumn.className = 'left-column';
+    leftColumn.style.display = 'flex';
+    leftColumn.style.flexDirection = 'column';
+    leftColumn.style.gap = '20px';
+    
+    // 调整右侧单词区域
+    const rightColumn = document.createElement('div');
+    rightColumn.className = 'right-column';
+    rightColumn.style.position = 'sticky';
+    rightColumn.style.top = '20px';
+    
+    // 移动卡片到新的布局中
+    mainContent.innerHTML = '';
+    leftColumn.appendChild(titleCard);
+    leftColumn.appendChild(contentCard);
+    leftColumn.appendChild(saveCard);
+    rightColumn.appendChild(keywordsCard);
+    
+    mainContent.appendChild(leftColumn);
+    mainContent.appendChild(rightColumn);
+    
+    // 调整卡片样式
+    contentCard.style.marginBottom = '20px';
+    keywordsCard.style.maxHeight = 'calc(100vh - 100px)';
+    keywordsCard.style.overflowY = 'auto';
     
     // 自动保存文章
     setTimeout(() => {
@@ -168,6 +227,9 @@ function displayWordList(words) {
     // 创建单词网格容器
     const wordGrid = document.createElement('div');
     wordGrid.className = 'word-grid';
+    wordGrid.style.display = 'grid';
+    wordGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+    wordGrid.style.gap = '15px';
     
     // 按字母顺序排序单词
     words.sort((a, b) => a.word.localeCompare(b.word));
@@ -176,31 +238,62 @@ function displayWordList(words) {
     words.forEach(wordObj => {
         const wordCard = document.createElement('div');
         wordCard.className = 'word-card';
+        wordCard.style.background = '#f8f9fa';
+        wordCard.style.borderRadius = '8px';
+        wordCard.style.padding = '12px';
+        wordCard.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+        wordCard.style.cursor = 'pointer';
+        wordCard.style.border = '1px solid #e9ecef';
+        wordCard.style.transition = 'all 0.3s ease';
         
         const wordText = document.createElement('div');
         wordText.className = 'word-text';
         wordText.textContent = wordObj.word;
+        wordText.style.fontWeight = '600';
+        wordText.style.fontSize = '1.1rem';
+        wordText.style.marginBottom = '5px';
+        wordText.style.color = '#333';
         
         const wordPhonetic = document.createElement('div');
         wordPhonetic.className = 'word-phonetic';
-        wordPhonetic.textContent = wordObj.phonetic || '';
+        wordPhonetic.textContent = wordObj.phonetic || '暂无音标';
+        wordPhonetic.style.fontSize = '0.9rem';
+        wordPhonetic.style.color = '#667eea';
+        wordPhonetic.style.fontStyle = 'italic';
+        wordPhonetic.style.marginBottom = '5px';
+        wordPhonetic.style.display = 'block'; // 确保显示
         
         const wordTranslation = document.createElement('div');
         wordTranslation.className = 'word-translation';
-        wordTranslation.textContent = wordObj.translation || '';
+        wordTranslation.textContent = wordObj.translation || '暂无翻译';
+        wordTranslation.style.fontSize = '0.95rem';
+        wordTranslation.style.color = '#666';
+        wordTranslation.style.marginBottom = '10px';
+        wordTranslation.style.display = 'block'; // 确保显示
         
         const wordActions = document.createElement('div');
         wordActions.className = 'word-actions';
+        wordActions.style.display = 'flex';
+        wordActions.style.gap = '8px';
+        wordActions.style.justifyContent = 'flex-start';
         
         const pronounceBtn = document.createElement('button');
         pronounceBtn.className = 'btn btn-sm btn-outline-primary';
+        pronounceBtn.style.padding = '3px 8px';
         pronounceBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
-        pronounceBtn.addEventListener('click', () => playPronunciation(wordObj.word));
+        pronounceBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playPronunciation(wordObj.word);
+        });
         
         const detailsBtn = document.createElement('button');
         detailsBtn.className = 'btn btn-sm btn-outline-info';
+        detailsBtn.style.padding = '3px 8px';
         detailsBtn.innerHTML = '<i class="fas fa-info-circle"></i>';
-        detailsBtn.addEventListener('click', () => showWordDetails(wordObj));
+        detailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showWordDetails(wordObj.word, wordObj.phonetic, wordObj.translation);
+        });
         
         wordActions.appendChild(pronounceBtn);
         wordActions.appendChild(detailsBtn);
@@ -210,10 +303,33 @@ function displayWordList(words) {
         wordCard.appendChild(wordTranslation);
         wordCard.appendChild(wordActions);
         
+        // 点击单词卡片也可以显示详情
+        wordCard.addEventListener('click', () => {
+            showWordDetails(wordObj.word, wordObj.phonetic, wordObj.translation);
+        });
+        
+        // 鼠标悬停效果
+        wordCard.addEventListener('mouseover', () => {
+            wordCard.style.transform = 'translateY(-3px)';
+            wordCard.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.1)';
+        });
+        
+        wordCard.addEventListener('mouseout', () => {
+            wordCard.style.transform = 'translateY(0)';
+            wordCard.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+        });
+        
         wordGrid.appendChild(wordCard);
     });
     
     keywordsContainer.appendChild(wordGrid);
+    
+    // 调整关键词卡片样式
+    const keywordsCard = document.querySelector('.keywords-card');
+    if (keywordsCard) {
+        keywordsCard.style.maxHeight = '100vh';
+        keywordsCard.style.overflowY = 'auto';
+    }
 }
 
 // 播放单词发音
@@ -236,9 +352,19 @@ function showWordDetails(word, phonetic, translation) {
     const phoneticElement = document.getElementById('modalPhonetic');
     const translationElement = document.getElementById('modalTranslation');
     
-    wordElement.textContent = word;
-    phoneticElement.textContent = phonetic || '暂无音标';
-    translationElement.textContent = translation || '暂无翻译';
+    // 处理不同的参数情况
+    if (typeof word === 'object' && word !== null) {
+        // 如果传入的是单词对象
+        const wordObj = word;
+        wordElement.textContent = wordObj.word;
+        phoneticElement.textContent = wordObj.phonetic || '暂无音标';
+        translationElement.textContent = wordObj.translation || '暂无翻译';
+    } else {
+        // 如果传入的是单独的参数
+        wordElement.textContent = word;
+        phoneticElement.textContent = phonetic || '暂无音标';
+        translationElement.textContent = translation || '暂无翻译';
+    }
     
     modal.style.display = 'block';
 }
@@ -296,10 +422,7 @@ async function saveArticle() {
             }
             // 清除本地存储的草稿
             localStorage.removeItem('reading_draft');
-            // 可以选择跳转到文章列表页
-            setTimeout(() => {
-                window.location.href = '/my_articles';
-            }, 1500);
+            // 不再自动跳转，让用户可以继续查看处理结果
         } else {
             showMessage(`保存失败: ${result.message}`, 'error');
         }

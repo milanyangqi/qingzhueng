@@ -19,7 +19,7 @@
                 <textarea id="content" name="content" class="form-control" rows="12" required>{{ article.content }}</textarea>
             </div>
             <button type="submit" class="btn btn-primary">保存修改</button>
-            <a href="{{ url_for('my_articles') }}" class="btn btn-secondary">返回</a>
+            <a href="{{ url_for('history_articles') }}" class="btn btn-secondary">返回</a>
         </form>
         <div id="message" class="message"></div>
     </div>
@@ -40,7 +40,7 @@
             if (data.success) {
                 msg.textContent = '保存成功！';
                 msg.className = 'message success';
-                setTimeout(() => { window.location.href = '/my_articles'; }, 1200);
+                setTimeout(() => { window.location.href = '/history_articles'; }, 1200);
             } else {
                 msg.textContent = data.message || '保存失败';
                 msg.className = 'message error';
