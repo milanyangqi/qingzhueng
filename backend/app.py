@@ -1913,17 +1913,19 @@ def save_article():
         if not data.get('title') or not data.get('content'):
             return jsonify({'success': False, 'message': '标题和内容不能为空'})
         
-        # 检查内容中是否包含图片
-        content = data.get('content', '')
-        processed_content = data.get('processedContent', '')
-        has_images = '<img' in content or '<img' in processed_content
+        # 构建完整的文章内容，包含词汇和问题
+        full_content = data.get('content', '')
+        if data.get('vocabulary'):
+            full_content += "\n\n词汇列表:\n" + data.get('vocabulary', '')
+        if data.get('questions'):
+            full_content += "\n\n阅读理解问题:\n" + data.get('questions', '')
         
         # 创建新文章
         new_article = Article(
             title=data['title'],
-            content=data['content'],
-            processed_content=data.get('processedContent'),
-            keywords=json.dumps(data.get('keywords', [])),
+            content=full_content,
+            processed_content=data.get('content'),
+            keywords=json.dumps([data.get('topic', '')]),
             user_id=session['user_id'],
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
@@ -1931,14 +1933,6 @@ def save_article():
         
         db.session.add(new_article)
         db.session.commit()
-        
-        # 如果包含图片，返回提醒信息
-        if has_images:
-            return jsonify({
-                'success': True, 
-                'article_id': new_article.id,
-                'message': '文章保存成功，请注意文章中包含图片'
-            })
         
         return jsonify({
             'success': True, 
@@ -1949,6 +1943,161 @@ def save_article():
         db.session.rollback()
         print(f"保存文章出错: {str(e)}")
         return jsonify({'success': False, 'message': f'保存失败: {str(e)}'})
+
+# 路由：导出PDF
+@app.route('/export_article_pdf', methods=['POST'])
+def export_article_pdf():
+    try:
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        import io
+        import html
+        
+        data = request.get_json()
+        title = data.get('title', '未命名文章')
+        content = data.get('content', '')
+        vocabulary = data.get('vocabulary', '')
+        questions = data.get('questions', '')
+        
+        # 创建PDF缓冲区
+        buffer = io.BytesIO()
+        
+        # 创建PDF文档
+        doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                              rightMargin=72, leftMargin=72,
+                              topMargin=72, bottomMargin=72)
+        
+        # 获取样式
+        styles = getSampleStyleSheet()
+        
+        # 尝试注册中文字体（如果可用）
+        try:
+            # 尝试使用系统中文字体
+            import platform
+            if platform.system() == 'Darwin':  # macOS
+                pdfmetrics.registerFont(TTFont('SimSun', '/System/Library/Fonts/PingFang.ttc'))
+                font_name = 'SimSun'
+            elif platform.system() == 'Windows':
+                pdfmetrics.registerFont(TTFont('SimSun', 'C:/Windows/Fonts/simsun.ttc'))
+                font_name = 'SimSun'
+            else:  # Linux
+                font_name = 'Helvetica'
+        except:
+            font_name = 'Helvetica'
+        
+        # 创建标题样式
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontName=font_name,
+            fontSize=18,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            encoding='utf-8'
+        )
+        
+        # 创建正文样式
+        content_style = ParagraphStyle(
+            'CustomContent',
+            parent=styles['Normal'],
+            fontName=font_name,
+            fontSize=12,
+            spaceAfter=12,
+            leading=18,
+            alignment=TA_LEFT,
+            encoding='utf-8'
+        )
+        
+        # 创建小标题样式
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontName=font_name,
+            fontSize=14,
+            spaceAfter=15,
+            spaceBefore=20,
+            alignment=TA_LEFT,
+            encoding='utf-8'
+        )
+        
+        # 构建PDF内容
+        story = []
+        
+        # 添加标题
+        safe_title = html.escape(title)
+        story.append(Paragraph(safe_title, title_style))
+        story.append(Spacer(1, 20))
+        
+        # 添加文章内容
+        if content:
+            content_lines = content.split('\n')
+            for line in content_lines:
+                if line.strip():
+                    safe_line = html.escape(line.strip())
+                    story.append(Paragraph(safe_line, content_style))
+                else:
+                    story.append(Spacer(1, 6))
+        
+        # 添加词汇列表
+        if vocabulary:
+            story.append(Spacer(1, 20))
+            story.append(Paragraph('词汇列表', subtitle_style))
+            vocab_lines = vocabulary.split('\n')
+            for line in vocab_lines:
+                if line.strip():
+                    safe_line = html.escape(line.strip())
+                    story.append(Paragraph(safe_line, content_style))
+        
+        # 添加阅读理解问题
+        if questions:
+            story.append(Spacer(1, 20))
+            story.append(Paragraph('阅读理解问题', subtitle_style))
+            question_lines = questions.split('\n')
+            for line in question_lines:
+                if line.strip():
+                    safe_line = html.escape(line.strip())
+                    story.append(Paragraph(safe_line, content_style))
+        
+        # 生成PDF
+        doc.build(story)
+        
+        # 获取PDF数据
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        
+        # 安全的文件名处理
+        safe_filename = ''.join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        if not safe_filename:
+            safe_filename = 'article'
+        
+        # 返回PDF文件
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}.pdf"'
+        response.headers['Content-Length'] = len(pdf_data)
+        
+        return response
+        
+    except ImportError:
+        # 如果没有安装reportlab，返回简单的文本文件
+        data = request.get_json()
+        title = data.get('title', '未命名文章')
+        content = data.get('content', '')
+        
+        response = make_response(content)
+        response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+        response.headers['Content-Disposition'] = f'attachment; filename="{title}.txt"'
+        
+        return response
+        
+    except Exception as e:
+        print(f"导出PDF出错: {str(e)}")
+        return jsonify({'success': False, 'message': f'导出失败: {str(e)}'})
 
 if __name__ == '__main__':
     with app.app_context():

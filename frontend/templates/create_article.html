@@ -93,6 +93,43 @@
             font-size: 24px;
             color: #4a148c;
         }
+        
+        /* 操作按钮样式 */
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .save-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .save-btn:hover {
+            background-color: #218838;
+        }
+        
+        .export-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .export-btn:hover {
+            background-color: #c82333;
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -227,6 +264,16 @@
                     
                     <h4>阅读理解问题</h4>
                     <div id="comprehension-questions"></div>
+                    
+                    <!-- 操作按钮区域 -->
+                    <div class="action-buttons" style="margin-top: 30px; text-align: center;">
+                        <button id="save-article-btn" class="action-btn save-btn" style="margin-right: 15px;">
+                            <i class="fas fa-save"></i> 保存文章
+                        </button>
+                        <button id="export-pdf-btn" class="action-btn export-btn">
+                            <i class="fas fa-file-pdf"></i> 导出PDF
+                        </button>
+                    </div>
                 </div>
             </div>
             </div>
@@ -324,6 +371,86 @@
                                 li.innerHTML = `<strong>${item.word}</strong>: ${item.definition || ''} ${item.translation ? `(${item.translation})` : ''}`;
                                 ul.appendChild(li);
                             });
+            
+            // 保存文章功能
+            document.getElementById('save-article-btn').addEventListener('click', function() {
+                const articleData = {
+                    title: document.getElementById('article-title').textContent,
+                    content: document.getElementById('article-content').textContent,
+                    vocabulary: document.getElementById('vocabulary-list').innerHTML,
+                    questions: document.getElementById('comprehension-questions').innerHTML,
+                    lexile: document.getElementById('lexile-level').value,
+                    topic: document.getElementById('article-topic').value,
+                    created_at: new Date().toISOString()
+                };
+                
+                // 发送保存请求到后端
+                fetch('/save_article', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(articleData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('文章保存成功！');
+                    } else {
+                        alert('保存失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('保存时发生错误：' + error.message);
+                });
+            });
+            
+            // 导出PDF功能
+            document.getElementById('export-pdf-btn').addEventListener('click', function() {
+                const title = document.getElementById('article-title').textContent;
+                const content = document.getElementById('article-content').textContent;
+                const vocabulary = document.getElementById('vocabulary-list').textContent;
+                const questions = document.getElementById('comprehension-questions').textContent;
+                
+                // 发送PDF导出请求
+                fetch('/export_article_pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        vocabulary: vocabulary,
+                        questions: questions
+                    })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    }
+                    throw new Error('PDF导出失败');
+                })
+                .then(blob => {
+                    // 创建下载链接
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `${title || '文章'}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    alert('PDF导出失败：' + error.message);
+                });
+            });
+            
+            // 初始化时禁用操作按钮
+            document.getElementById('save-article-btn').disabled = true;
+            document.getElementById('export-pdf-btn').disabled = true;
                             vocabList.appendChild(ul);
                         } else {
                             vocabList.textContent = '无词汇列表';
@@ -347,6 +474,10 @@
                         
                         // 滚动到结果区域
                         resultArea.scrollIntoView({ behavior: 'smooth' });
+                        
+                        // 启用操作按钮
+                        document.getElementById('save-article-btn').disabled = false;
+                        document.getElementById('export-pdf-btn').disabled = false;
                     } else {
                         alert('生成文章失败：' + data.message);
                     }
