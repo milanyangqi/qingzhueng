@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta
@@ -1976,18 +1976,67 @@ def export_article_pdf():
         styles = getSampleStyleSheet()
         
         # 尝试注册中文字体（如果可用）
+        font_name = 'Helvetica'  # 默认字体
         try:
-            # 尝试使用系统中文字体
             import platform
+            import os
+            
             if platform.system() == 'Darwin':  # macOS
-                pdfmetrics.registerFont(TTFont('SimSun', '/System/Library/Fonts/PingFang.ttc'))
-                font_name = 'SimSun'
+                # 尝试多个可能的中文字体路径，优先使用支持中文的字体
+                font_paths = [
+                    '/System/Library/Fonts/PingFang.ttc',
+                    '/System/Library/Fonts/STHeiti Light.ttc',
+                    '/System/Library/Fonts/STHeiti Medium.ttc',
+                    '/System/Library/Fonts/Hiragino Sans GB.ttc',
+                    '/System/Library/Fonts/STSong.ttc',
+                    '/System/Library/Fonts/STKaiti.ttc',
+                    '/Library/Fonts/Arial Unicode MS.ttf',
+                    '/System/Library/Fonts/Helvetica.ttc'
+                ]
+                
+                for font_path in font_paths:
+                    if os.path.exists(font_path):
+                        try:
+                            # 注册字体
+                            font = TTFont('ChineseFont', font_path)
+                            pdfmetrics.registerFont(font)
+                            
+                            # 测试字体是否支持中文
+                            try:
+                                # 尝试创建包含中文的测试段落
+                                test_style = ParagraphStyle('test', fontName='ChineseFont', fontSize=12)
+                                test_para = Paragraph('测试中文字符', test_style)
+                                font_name = 'ChineseFont'
+                                print(f"成功注册并验证中文字体: {font_path}")
+                                break
+                            except Exception as test_error:
+                                print(f"字体不支持中文 {font_path}: {test_error}")
+                                continue
+                                
+                        except Exception as font_error:
+                            print(f"注册字体失败 {font_path}: {font_error}")
+                            continue
+                            
             elif platform.system() == 'Windows':
-                pdfmetrics.registerFont(TTFont('SimSun', 'C:/Windows/Fonts/simsun.ttc'))
-                font_name = 'SimSun'
-            else:  # Linux
-                font_name = 'Helvetica'
-        except:
+                windows_fonts = [
+                    'C:/Windows/Fonts/simsun.ttc',
+                    'C:/Windows/Fonts/msyh.ttc',
+                    'C:/Windows/Fonts/arial.ttf'
+                ]
+                
+                for font_path in windows_fonts:
+                    if os.path.exists(font_path):
+                        try:
+                            pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
+                            font_name = 'ChineseFont'
+                            print(f"成功注册字体: {font_path}")
+                            break
+                        except Exception as font_error:
+                            print(f"注册字体失败 {font_path}: {font_error}")
+                            continue
+                            
+        except Exception as e:
+            print(f"字体注册过程出错: {e}")
             font_name = 'Helvetica'
         
         # 创建标题样式
@@ -1997,8 +2046,7 @@ def export_article_pdf():
             fontName=font_name,
             fontSize=18,
             spaceAfter=30,
-            alignment=TA_CENTER,
-            encoding='utf-8'
+            alignment=TA_CENTER
         )
         
         # 创建正文样式
@@ -2009,8 +2057,7 @@ def export_article_pdf():
             fontSize=12,
             spaceAfter=12,
             leading=18,
-            alignment=TA_LEFT,
-            encoding='utf-8'
+            alignment=TA_LEFT
         )
         
         # 创建小标题样式
@@ -2021,57 +2068,103 @@ def export_article_pdf():
             fontSize=14,
             spaceAfter=15,
             spaceBefore=20,
-            alignment=TA_LEFT,
-            encoding='utf-8'
+            alignment=TA_LEFT
         )
         
         # 构建PDF内容
         story = []
         
-        # 添加标题
-        safe_title = html.escape(title)
-        story.append(Paragraph(safe_title, title_style))
-        story.append(Spacer(1, 20))
+        try:
+            # 添加标题
+            if title:
+                # 清理标题，移除HTML标签
+                clean_title = html.escape(str(title).strip())
+                if clean_title:
+                    story.append(Paragraph(clean_title, title_style))
+                    story.append(Spacer(1, 20))
+            
+            # 添加文章内容
+            if content:
+                story.append(Paragraph('文章内容', subtitle_style))
+                content_lines = str(content).split('\n')
+                for line in content_lines:
+                    line = line.strip()
+                    if line:
+                        # 移除HTML标签并转义特殊字符
+                        clean_line = html.escape(line)
+                        # 替换常见的特殊字符
+                        clean_line = clean_line.replace('&quot;', '"').replace('&apos;', "'")
+                        story.append(Paragraph(clean_line, content_style))
+                    else:
+                        story.append(Spacer(1, 6))
+            
+            # 添加词汇列表
+            if vocabulary:
+                story.append(Spacer(1, 20))
+                story.append(Paragraph('词汇列表', subtitle_style))
+                # 处理词汇列表，可能包含HTML格式
+                vocab_text = str(vocabulary).strip()
+                if vocab_text:
+                    # 简单处理HTML列表
+                    vocab_lines = vocab_text.replace('<li>', '• ').replace('</li>', '\n').split('\n')
+                    for line in vocab_lines:
+                        line = line.strip()
+                        if line and not line.startswith('<'):
+                            clean_line = html.escape(line)
+                            story.append(Paragraph(clean_line, content_style))
+            
+            # 添加阅读理解问题
+            if questions:
+                story.append(Spacer(1, 20))
+                story.append(Paragraph('阅读理解问题', subtitle_style))
+                # 处理问题列表，可能包含HTML格式
+                questions_text = str(questions).strip()
+                if questions_text:
+                    # 简单处理HTML列表
+                    question_lines = questions_text.replace('<li>', '').replace('</li>', '\n').split('\n')
+                    question_num = 1
+                    for line in question_lines:
+                        line = line.strip()
+                        if line and not line.startswith('<'):
+                            clean_line = html.escape(line)
+                            if clean_line:
+                                story.append(Paragraph(f"{question_num}. {clean_line}", content_style))
+                                question_num += 1
+                                
+        except Exception as content_error:
+            print(f"处理PDF内容时出错: {content_error}")
+            # 添加错误信息到PDF
+            story.append(Paragraph('内容处理出错，请检查数据格式', content_style))
         
-        # 添加文章内容
-        if content:
-            content_lines = content.split('\n')
-            for line in content_lines:
-                if line.strip():
-                    safe_line = html.escape(line.strip())
-                    story.append(Paragraph(safe_line, content_style))
-                else:
-                    story.append(Spacer(1, 6))
-        
-        # 添加词汇列表
-        if vocabulary:
-            story.append(Spacer(1, 20))
-            story.append(Paragraph('词汇列表', subtitle_style))
-            vocab_lines = vocabulary.split('\n')
-            for line in vocab_lines:
-                if line.strip():
-                    safe_line = html.escape(line.strip())
-                    story.append(Paragraph(safe_line, content_style))
-        
-        # 添加阅读理解问题
-        if questions:
-            story.append(Spacer(1, 20))
-            story.append(Paragraph('阅读理解问题', subtitle_style))
-            question_lines = questions.split('\n')
-            for line in question_lines:
-                if line.strip():
-                    safe_line = html.escape(line.strip())
-                    story.append(Paragraph(safe_line, content_style))
+        # 确保有内容可以生成PDF
+        if not story:
+            story.append(Paragraph('无内容可显示', content_style))
         
         # 生成PDF
-        doc.build(story)
+        try:
+            doc.build(story)
+            print(f"PDF构建成功，使用字体: {font_name}")
+        except Exception as build_error:
+            print(f"PDF构建失败: {build_error}")
+            # 尝试使用默认字体重新构建
+            font_name = 'Helvetica'
+            title_style.fontName = font_name
+            content_style.fontName = font_name
+            subtitle_style.fontName = font_name
+            doc.build(story)
         
         # 获取PDF数据
         pdf_data = buffer.getvalue()
         buffer.close()
         
+        print(f"生成的PDF大小: {len(pdf_data)} 字节")
+        
+        # 验证PDF数据
+        if len(pdf_data) < 100:  # PDF文件应该至少有几百字节
+            raise Exception("生成的PDF文件过小，可能损坏")
+        
         # 安全的文件名处理
-        safe_filename = ''.join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        safe_filename = ''.join(c for c in str(title) if c.isalnum() or c in (' ', '-', '_')).rstrip()
         if not safe_filename:
             safe_filename = 'article'
         
@@ -2079,8 +2172,10 @@ def export_article_pdf():
         response = make_response(pdf_data)
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}.pdf"'
-        response.headers['Content-Length'] = len(pdf_data)
+        response.headers['Content-Length'] = str(len(pdf_data))
+        response.headers['Cache-Control'] = 'no-cache'
         
+        print(f"返回PDF文件: {safe_filename}.pdf")
         return response
         
     except ImportError:
