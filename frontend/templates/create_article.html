@@ -6,6 +6,8 @@
     <title>AI生成文章 - 青竹英语</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         /* 文章生成页面特定样式 */
         .article-generator {
@@ -139,6 +141,16 @@
         
         .preview-btn:hover {
             background-color: #138496;
+        }
+        
+        /* Markdown保存按钮样式 */
+        .markdown-btn {
+            background-color: #6f42c1;
+            color: white;
+        }
+        
+        .markdown-btn:hover {
+            background-color: #5a32a3;
         }
         
         /* 模态框样式 */
@@ -364,19 +376,34 @@
                     <h4>词汇列表</h4>
                     <div id="vocabulary-list" style="margin-bottom: 20px;"></div>
                     
-                    <h4>阅读理解问题</h4>
-                    <div id="comprehension-questions"></div>
+                    <h4 id="multiple-choice-title" style="display: none;">选择题</h4>
+                    <div id="multiple-choice-questions" style="margin-bottom: 20px;"></div>
+                    
+                    <h4 id="translation-title" style="display: none;">参考译文</h4>
+                    <div id="reference-translation" style="margin-bottom: 20px; white-space: pre-line;"></div>
+                    
+                    <h4 id="answers-title" style="display: none;">选择题答案</h4>
+                    <div id="answers-section" style="margin-bottom: 20px;"></div>
                     
                     <!-- 操作按钮区域 -->
-                    <div class="action-buttons" style="margin-top: 30px; text-align: center;">
-                        <button id="save-article-btn" class="action-btn save-btn" style="margin-right: 15px;">
+                    <div class="action-buttons" style="margin-top: 30px; text-align: center; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; max-width: 600px; margin-left: auto; margin-right: auto; padding: 10px 0;">
+                        <button id="clear-all-btn" class="action-btn" style="background-color: #f44336; color: white;">
+                            <i class="fas fa-trash"></i> 清空所有
+                        </button>
+                        <button id="save-article-btn" class="action-btn save-btn">
                             <i class="fas fa-save"></i> 保存文章
                         </button>
-                        <button id="preview-pdf-btn" class="action-btn preview-btn" style="margin-right: 15px;">
+                        <button id="preview-markdown-btn" class="action-btn markdown-btn">
+                            <i class="fab fa-markdown"></i> Markdown格式
+                        </button>
+                        <button id="preview-pdf-btn" class="action-btn preview-btn">
                             <i class="fas fa-eye"></i> 预览PDF
                         </button>
-                        <button id="export-pdf-btn" class="action-btn export-btn">
-                            <i class="fas fa-file-pdf"></i> 导出PDF
+                        <button id="print-btn" class="action-btn export-btn">
+                            <i class="fas fa-print"></i> 打印
+                        </button>
+                        <button id="regenerate-btn" class="action-btn" style="background-color: #ff9800; color: white;">
+                            <i class="fas fa-redo"></i> 再生成一篇
                         </button>
                     </div>
                     
@@ -402,6 +429,32 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Markdown预览模态框 -->
+                    <div id="markdown-preview-modal" class="modal" style="display: none;">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>Markdown预览</h3>
+                                <span class="close" id="close-markdown-preview">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <div id="markdown-preview-content" class="pdf-preview" style="font-family: 'Courier New', monospace; white-space: pre-wrap;">
+                                    <!-- Markdown预览内容将在这里显示 -->
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button id="copy-markdown-btn" class="action-btn" style="background-color: #28a745; color: white; margin-right: 10px;">
+                                    <i class="fas fa-copy"></i> 复制
+                                </button>
+                                <button id="download-markdown-btn" class="action-btn markdown-btn">
+                                    <i class="fas fa-download"></i> 下载Markdown文件
+                                </button>
+                                <button id="cancel-markdown-preview-btn" class="action-btn cancel-btn">
+                                    取消
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             </div>
@@ -414,6 +467,173 @@
             const vocabInput = document.getElementById('vocabulary-input');
             const vocabCount = document.getElementById('vocab-count');
             const loadingIndicator = document.getElementById('loading-indicator');
+            
+            // 页面加载时尝试载入上次生成的内容
+            loadLastGeneratedContent();
+            
+            // 重新生成按钮事件
+            document.getElementById('regenerate-btn').addEventListener('click', function() {
+                // 重新提交表单生成新内容
+                form.dispatchEvent(new Event('submit'));
+            });
+            
+            // 清空所有按钮事件
+            document.getElementById('clear-all-btn').addEventListener('click', function() {
+                if (confirm('确定要清空所有内容吗？此操作不可撤销。')) {
+                    // 清空表单
+                    document.getElementById('lexile-level').value = 700;
+                    document.getElementById('article-topic').value = '';
+                    document.getElementById('vocabulary-input').value = '';
+                    document.getElementById('word-count').value = 300;
+                    document.getElementById('vocab-count').textContent = '0';
+                    
+                    // 隐藏结果区域
+                    document.getElementById('article-result').style.display = 'none';
+                    
+                    // 禁用操作按钮
+                    document.getElementById('save-article-btn').disabled = true;
+                    document.getElementById('preview-pdf-btn').disabled = true;
+                    document.getElementById('print-btn').disabled = true;
+                    document.getElementById('regenerate-btn').disabled = true;
+                    document.getElementById('clear-all-btn').disabled = true;
+                    
+                    // 清空localStorage
+                    localStorage.removeItem('lastGeneratedArticle');
+                    
+                    // 重新启用清空按钮（因为清空操作本身应该总是可用的）
+                    document.getElementById('clear-all-btn').disabled = false;
+                }
+            });
+            
+            // 保存生成内容到localStorage
+            function saveGeneratedContent(data) {
+                try {
+                    localStorage.setItem('lastGeneratedArticle', JSON.stringify(data));
+                } catch (error) {
+                    console.error('保存生成内容失败:', error);
+                }
+            }
+            
+            // 载入上次生成的内容
+            function loadLastGeneratedContent() {
+                try {
+                    const savedData = localStorage.getItem('lastGeneratedArticle');
+                    if (savedData) {
+                        const data = JSON.parse(savedData);
+                        
+                        // 恢复表单数据
+                        document.getElementById('lexile-level').value = data.lexile || 700;
+                        document.getElementById('article-topic').value = data.topic || '';
+                        document.getElementById('vocabulary-input').value = data.vocabulary || '';
+                        document.getElementById('word-count').value = data.word_count || 300;
+                        
+                        // 更新词汇计数
+                        const vocabInput = document.getElementById('vocabulary-input');
+                        const text = vocabInput.value;
+                        let count = 0;
+                        if (text.trim()) {
+                            const words = text.split(/[,\n]/).filter(word => word.trim().length > 0);
+                            count = words.length;
+                        }
+                        document.getElementById('vocab-count').textContent = count;
+                        
+                        // 如果有生成的数据，显示结果
+                        if (data.generated_data) {
+                            displayGeneratedContent(data.generated_data);
+                        }
+                    }
+                } catch (error) {
+                    console.error('载入上次生成内容失败:', error);
+                }
+            }
+            
+            // 显示生成的内容
+            function displayGeneratedContent(articleData) {
+                const resultArea = document.getElementById('article-result');
+                resultArea.style.display = 'block';
+                
+                // 填充文章内容
+                document.getElementById('article-title').textContent = articleData.topic || '生成的文章';
+                document.getElementById('article-content').textContent = articleData.content || '';
+                
+                // 填充词汇列表
+                const vocabList = document.getElementById('vocabulary-list');
+                vocabList.innerHTML = '';
+                if (articleData.vocabulary && articleData.vocabulary.length > 0) {
+                    const vocabHtml = articleData.vocabulary.map(item => {
+                        if (typeof item === 'object' && item.word && item.definition) {
+                            return `<div style="margin-bottom: 10px;"><strong>${item.word}</strong>: ${item.definition}</div>`;
+                        } else if (typeof item === 'string') {
+                            return `<div style="margin-bottom: 10px;">${item}</div>`;
+                        }
+                        return '';
+                    }).join('');
+                    vocabList.innerHTML = vocabHtml;
+                }
+                
+                // 填充选择题
+                const multipleChoiceDiv = document.getElementById('multiple-choice-questions');
+                const multipleChoiceTitle = document.getElementById('multiple-choice-title');
+                multipleChoiceDiv.innerHTML = '';
+                if (articleData.multiple_choice && articleData.multiple_choice.length > 0) {
+                    multipleChoiceTitle.style.display = 'block';
+                    articleData.multiple_choice.forEach((item, index) => {
+                        const questionDiv = document.createElement('div');
+                        questionDiv.className = 'question-item';
+                        questionDiv.style.marginBottom = '20px';
+                        
+                        let optionsHtml = '';
+                        if (item.options && item.options.length > 0) {
+                            const optionLabels = ['A', 'B', 'C', 'D'];
+                            optionsHtml = item.options.map((option, optIndex) => {
+                                const label = optionLabels[optIndex] || String.fromCharCode(65 + optIndex);
+                                const displayOption = option.match(/^[A-D][\.\)\s]/) ? option : `${label}. ${option}`;
+                                return `<div class="option" style="margin-left: 20px; margin-top: 5px;">${displayOption}</div>`;
+                            }).join('');
+                        }
+                        
+                        questionDiv.innerHTML = `
+                            <div class="question-text"><strong>${index + 1}. ${item.question}</strong></div>
+                            ${optionsHtml}
+                        `;
+                        multipleChoiceDiv.appendChild(questionDiv);
+                    });
+                } else {
+                    multipleChoiceTitle.style.display = 'none';
+                }
+                
+                // 填充参考译文
+                const translationDiv = document.getElementById('reference-translation');
+                const translationTitle = document.getElementById('translation-title');
+                if (articleData.translation) {
+                    translationTitle.style.display = 'block';
+                    translationDiv.textContent = articleData.translation;
+                } else {
+                    translationTitle.style.display = 'none';
+                    translationDiv.textContent = '';
+                }
+                
+                // 填充选择题答案
+                const answersDiv = document.getElementById('answers-section');
+                const answersTitle = document.getElementById('answers-title');
+                if (articleData.multiple_choice && articleData.multiple_choice.length > 0) {
+                    answersTitle.style.display = 'block';
+                    const answersHtml = articleData.multiple_choice.map((item, index) => {
+                        return `<div style="margin-bottom: 5px;">${index + 1}. ${item.correct_answer || 'N/A'}</div>`;
+                    }).join('');
+                    answersDiv.innerHTML = answersHtml;
+                } else {
+                    answersTitle.style.display = 'none';
+                    answersDiv.innerHTML = '';
+                }
+                
+                // 启用操作按钮
+                document.getElementById('save-article-btn').disabled = false;
+                document.getElementById('preview-pdf-btn').disabled = false;
+                document.getElementById('print-btn').disabled = false;
+                document.getElementById('regenerate-btn').disabled = false;
+                document.getElementById('clear-all-btn').disabled = false;
+            }
             
             // 更新词汇计数
             vocabInput.addEventListener('input', function() {
@@ -496,7 +716,8 @@
                             const ul = document.createElement('ul');
                             articleData.vocabulary.forEach(item => {
                                 const li = document.createElement('li');
-                                li.innerHTML = `<strong>${item.word}</strong>: ${item.definition || ''} ${item.translation ? `(${item.translation})` : ''}`;
+                                const phonetic = item.phonetic ? ` [${item.phonetic}]` : '';
+                                li.innerHTML = `<strong>${item.word}</strong>${phonetic}: ${item.definition || ''} ${item.translation ? `(${item.translation})` : ''}`;
                                 ul.appendChild(li);
                             });
             
@@ -506,7 +727,6 @@
                     title: document.getElementById('article-title').textContent,
                     content: document.getElementById('article-content').textContent,
                     vocabulary: document.getElementById('vocabulary-list').innerHTML,
-                    questions: document.getElementById('comprehension-questions').innerHTML,
                     lexile: document.getElementById('lexile-level').value,
                     topic: document.getElementById('article-topic').value,
                     created_at: new Date().toISOString()
@@ -533,16 +753,194 @@
                 });
             });
             
+            // Markdown预览功能
+            document.getElementById('preview-markdown-btn').addEventListener('click', function() {
+                const title = document.getElementById('article-title').textContent;
+                const content = document.getElementById('article-content').textContent;
+                const vocabularyList = document.getElementById('vocabulary-list');
+                
+                // 提取词汇列表
+                let vocabularyText = '';
+                const vocabItems = vocabularyList.querySelectorAll('li');
+                if (vocabItems.length > 0) {
+                    vocabularyText = Array.from(vocabItems).map(item => {
+                        const text = item.textContent.trim();
+                        return `- ${text}`;
+                    }).join('\n');
+                } else {
+                    vocabularyText = vocabularyList.textContent.trim();
+                }
+                
+                // 提取选择题
+                let multipleChoiceText = '';
+                const multipleChoiceDiv = document.getElementById('multiple-choice-questions');
+                if (multipleChoiceDiv) {
+                    const choiceItems = multipleChoiceDiv.querySelectorAll('.question-item');
+                    if (choiceItems.length > 0) {
+                        multipleChoiceText = Array.from(choiceItems).map((item, index) => {
+                            const questionText = item.querySelector('.question-text')?.textContent.trim() || '';
+                            const options = item.querySelectorAll('.option');
+                            let optionsText = '';
+                            if (options.length > 0) {
+                                optionsText = Array.from(options).map(option => {
+                                    return `   ${option.textContent.trim()}`;
+                                }).join('\n');
+                            }
+                            return `${index + 1}. ${questionText}\n${optionsText}`;
+                        }).join('\n\n');
+                    }
+                }
+                
+                // 提取参考译文
+                let translationText = '';
+                const translationDiv = document.getElementById('reference-translation');
+                if (translationDiv) {
+                    translationText = translationDiv.textContent.trim();
+                }
+                
+                // 提取答案
+                let answersText = '';
+                const answersDiv = document.getElementById('answers-section');
+                if (answersDiv) {
+                    answersText = answersDiv.textContent.trim();
+                }
+                
+                // 生成Markdown格式内容
+                const markdownContent = `# ${title}
+
+## 文章内容
+
+${content}
+
+## 词汇列表
+
+${vocabularyText}
+
+${multipleChoiceText ? `## 选择题\n\n${multipleChoiceText}\n\n` : ''}${translationText ? `## 参考译文\n\n${translationText}\n\n` : ''}${answersText ? `## 选择题答案\n\n${answersText}\n\n` : ''}---
+*生成时间: ${new Date().toLocaleString('zh-CN')}*
+*蓝思指数: ${document.getElementById('lexile-level').value}*`;
+                
+                // 显示Markdown预览
+                document.getElementById('markdown-preview-content').textContent = markdownContent;
+                document.getElementById('markdown-preview-modal').style.display = 'block';
+            });
+            
+            // 关闭Markdown预览模态框
+            document.getElementById('close-markdown-preview').addEventListener('click', function() {
+                document.getElementById('markdown-preview-modal').style.display = 'none';
+            });
+            
+            document.getElementById('cancel-markdown-preview-btn').addEventListener('click', function() {
+                document.getElementById('markdown-preview-modal').style.display = 'none';
+            });
+            
+            // 点击Markdown模态框外部关闭
+            document.getElementById('markdown-preview-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.style.display = 'none';
+                }
+            });
+            
+            // 复制Markdown内容功能
+            document.getElementById('copy-markdown-btn').addEventListener('click', function() {
+                const markdownContent = document.getElementById('markdown-preview-content').textContent;
+                
+                // 使用现代的Clipboard API
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(markdownContent).then(function() {
+                        // 临时改变按钮文本以显示成功
+                        const btn = document.getElementById('copy-markdown-btn');
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                        btn.style.backgroundColor = '#28a745';
+                        
+                        setTimeout(function() {
+                            btn.innerHTML = originalText;
+                            btn.style.backgroundColor = '#28a745';
+                        }, 2000);
+                    }).catch(function(err) {
+                        console.error('复制失败:', err);
+                        fallbackCopyTextToClipboard(markdownContent);
+                    });
+                } else {
+                    // 降级方案
+                    fallbackCopyTextToClipboard(markdownContent);
+                }
+            });
+            
+            // 降级复制方案
+            function fallbackCopyTextToClipboard(text) {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        const btn = document.getElementById('copy-markdown-btn');
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                        
+                        setTimeout(function() {
+                            btn.innerHTML = originalText;
+                        }, 2000);
+                    } else {
+                        alert('复制失败，请手动复制内容');
+                    }
+                } catch (err) {
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动复制内容');
+                }
+                
+                document.body.removeChild(textArea);
+            }
+            
+            // 下载Markdown文件功能
+            document.getElementById('download-markdown-btn').addEventListener('click', function() {
+                const markdownContent = document.getElementById('markdown-preview-content').textContent;
+                const title = document.getElementById('article-title').textContent;
+                
+                // 创建下载链接
+                const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}.md`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                alert('Markdown文件已下载！');
+                document.getElementById('markdown-preview-modal').style.display = 'none';
+            });
+            
             // PDF预览功能
             document.getElementById('preview-pdf-btn').addEventListener('click', function() {
                 const title = document.getElementById('article-title').textContent;
                 const content = document.getElementById('article-content').textContent;
                 const vocabulary = document.getElementById('vocabulary-list').innerHTML;
-                const questions = document.getElementById('comprehension-questions').innerHTML;
+                const multipleChoice = document.getElementById('multiple-choice-questions').innerHTML;
+                const translation = document.getElementById('reference-translation').textContent;
+                const answers = document.getElementById('answers-section').innerHTML;
+                
+                // 调试信息
+                console.log('PDF预览内容检查:');
+                console.log('标题:', title);
+                console.log('内容:', content ? '有内容' : '无内容');
+                console.log('词汇:', vocabulary ? '有词汇' : '无词汇');
+                console.log('选择题:', multipleChoice ? '有选择题' : '无选择题');
+                console.log('译文:', translation ? '有译文' : '无译文');
+                console.log('答案:', answers ? '有答案' : '无答案');
                 
                 // 生成预览内容
                 const previewContent = document.getElementById('pdf-preview-content');
-                previewContent.innerHTML = `
+                let previewHtml = `
                     <div class="pdf-preview-page">
                         <h1 style="text-align: center; margin-bottom: 30px; color: #333;">${title}</h1>
                         <div style="margin-bottom: 30px;">
@@ -552,13 +950,34 @@
                         <div style="margin-bottom: 30px;">
                             <h3 style="color: #555; border-bottom: 2px solid #ddd; padding-bottom: 5px;">词汇列表</h3>
                             <div style="margin-top: 15px;">${vocabulary}</div>
-                        </div>
-                        <div>
-                            <h3 style="color: #555; border-bottom: 2px solid #ddd; padding-bottom: 5px;">阅读理解问题</h3>
-                            <div style="margin-top: 15px;">${questions}</div>
-                        </div>
-                    </div>
-                `;
+                        </div>`;
+                
+                if (multipleChoice.trim()) {
+                    previewHtml += `
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="color: #555; border-bottom: 2px solid #ddd; padding-bottom: 5px;">选择题</h3>
+                            <div style="margin-top: 15px;">${multipleChoice}</div>
+                        </div>`;
+                }
+                
+                if (translation.trim()) {
+                    previewHtml += `
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="color: #555; border-bottom: 2px solid #ddd; padding-bottom: 5px;">参考译文</h3>
+                            <div style="line-height: 1.8; text-align: justify; margin-top: 15px;">${translation}</div>
+                        </div>`;
+                }
+                
+                if (answers.trim()) {
+                    previewHtml += `
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="color: #555; border-bottom: 2px solid #ddd; padding-bottom: 5px;">选择题答案</h3>
+                            <div style="margin-top: 15px;">${answers}</div>
+                        </div>`;
+                }
+                
+                previewHtml += `</div>`;
+                previewContent.innerHTML = previewHtml;
                 
                 // 显示预览模态框
                 document.getElementById('pdf-preview-modal').style.display = 'block';
@@ -586,77 +1005,267 @@
                 document.getElementById('pdf-preview-modal').style.display = 'none';
             });
             
-            // 导出PDF功能（原有功能保持不变）
-            document.getElementById('export-pdf-btn').addEventListener('click', function() {
-                exportPDF();
+            // PDF导出函数
+            function exportPDF() {
+                // 获取预览内容
+                const previewContent = document.getElementById('pdf-preview-content');
+                if (!previewContent) {
+                    alert('没有找到要导出的内容');
+                    return;
+                }
+                
+                // 调试信息
+                console.log('PDF导出内容检查:');
+                console.log('预览内容HTML长度:', previewContent.innerHTML.length);
+                console.log('预览内容:', previewContent.innerHTML.substring(0, 200) + '...');
+                
+                // 创建一个临时容器用于PDF导出
+                const exportContainer = document.createElement('div');
+                exportContainer.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 794px;
+                    max-width: 100vw;
+                    box-sizing: border-box;
+                    padding: 40px;
+                    background: white;
+                    font-family: 'Microsoft YaHei', Arial, sans-serif;
+                    color: #333;
+                    line-height: 1.6;
+                    z-index: -1;
+                    opacity: 0;
+                    pointer-events: none;
+                `;
+                
+                // 克隆预览内容
+                const clonedContent = previewContent.cloneNode(true);
+                clonedContent.style.cssText = `
+                    width: 100%;
+                    margin: 0;
+                    padding: 0;
+                    font-size: 14px;
+                    line-height: 1.6;
+                `;
+                
+                // 确保所有子元素样式正确
+                const allElements = clonedContent.querySelectorAll('*');
+                allElements.forEach(el => {
+                    el.style.pageBreakInside = 'avoid';
+                    el.style.boxSizing = 'border-box';
+                    if (el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3') {
+                        el.style.pageBreakAfter = 'avoid';
+                        el.style.marginTop = '20px';
+                        el.style.marginBottom = '10px';
+                    }
+                });
+                
+                exportContainer.appendChild(clonedContent);
+                document.body.appendChild(exportContainer);
+                
+                // 等待内容渲染完成
+                setTimeout(() => {
+                
+                // 使用html2canvas和jsPDF生成PDF
+                if (typeof html2canvas !== 'undefined' && (typeof jsPDF !== 'undefined' || (window.jspdf && window.jspdf.jsPDF))) {
+                    html2canvas(exportContainer, {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff',
+                        width: exportContainer.scrollWidth,
+                        height: exportContainer.scrollHeight,
+                        scrollX: 0,
+                        scrollY: 0,
+                        logging: true,
+                        foreignObjectRendering: false
+                    }).then(canvas => {
+                        const imgData = canvas.toDataURL('image/png');
+                        const PDFConstructor = (typeof jsPDF !== 'undefined') ? jsPDF : window.jspdf.jsPDF;
+                        const pdf = new PDFConstructor('p', 'mm', 'a4');
+                        
+                        // A4页面尺寸（毫米）
+                        const pageWidth = 210;
+                        const pageHeight = 297;
+                        const margin = 10;
+                        const contentWidth = pageWidth - (margin * 2);
+                        const contentHeight = pageHeight - (margin * 2);
+                        
+                        // 计算图片在PDF中的尺寸
+                        const imgWidth = contentWidth;
+                        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                        
+                        let heightLeft = imgHeight;
+                        let position = margin;
+                        
+                        // 添加第一页
+                        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+                        heightLeft -= contentHeight;
+                        
+                        // 如果内容超过一页，添加更多页面
+                        while (heightLeft >= 0) {
+                            position = heightLeft - imgHeight + margin;
+                            pdf.addPage();
+                            pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+                            heightLeft -= contentHeight;
+                        }
+                        
+                        const title = document.getElementById('article-title').textContent || '生成的文章';
+                        const filename = `${title}_${new Date().toISOString().slice(0, 10)}.pdf`;
+                        pdf.save(filename);
+                        
+                        document.body.removeChild(exportContainer);
+                        alert('PDF导出成功！');
+                    }).catch(error => {
+                        console.error('PDF导出失败:', error);
+                        document.body.removeChild(exportContainer);
+                        alert('PDF导出失败，请重试');
+                    });
+                } else {
+                    document.body.removeChild(exportContainer);
+                    alert('PDF导出功能需要加载相关库，请刷新页面重试');
+                }
+                }, 500); // 等待500ms让内容完全渲染
+            }
+            
+            // 打印功能
+            document.getElementById('print-btn').addEventListener('click', function() {
+                printArticle();
             });
             
-            // 提取PDF导出逻辑为独立函数
-            function exportPDF() {
+            // 打印功能
+            function printArticle() {
                 const title = document.getElementById('article-title').textContent;
                 const content = document.getElementById('article-content').textContent;
-                const vocabulary = document.getElementById('vocabulary-list').textContent;
-                const questions = document.getElementById('comprehension-questions').textContent;
+                const vocabulary = document.getElementById('vocabulary-list').innerHTML;
+                const multipleChoice = document.getElementById('multiple-choice-questions').innerHTML;
+                const translation = document.getElementById('reference-translation').textContent;
+                const answers = document.getElementById('answers-section').innerHTML;
                 
-                // 发送PDF导出请求
-                fetch('/export_article_pdf', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        title: title,
-                        content: content,
-                        vocabulary: vocabulary,
-                        questions: questions
-                    })
-                })
-                .then(response => {
-                    if (response.ok) {
-                        return response.blob();
-                    }
-                    throw new Error('PDF导出失败');
-                })
-                .then(blob => {
-                    // 创建下载链接
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = `${title || '文章'}.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                })
-                .catch(error => {
-                    alert('PDF导出失败：' + error.message);
-                });
+                // 构建打印内容
+                let printContent = `
+                    <h1>${title || '文章'}</h1>
+                    <div class="content">${content}</div>
+                    <h2>词汇列表</h2>
+                    <div class="vocabulary">${vocabulary}</div>`;
+                
+                if (multipleChoice.trim()) {
+                    printContent += `
+                        <h2>选择题</h2>
+                        <div class="multiple-choice">${multipleChoice}</div>`;
+                }
+                
+                if (translation.trim()) {
+                    printContent += `
+                        <h2>参考译文</h2>
+                        <div class="translation">${translation}</div>`;
+                }
+                
+                if (answers.trim()) {
+                    printContent += `
+                        <h2>选择题答案</h2>
+                        <div class="answers">${answers}</div>`;
+                }
+                
+                // 创建打印窗口
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>${title || '文章'}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+                            h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+                            h2 { color: #555; margin-top: 30px; }
+                            .content { margin-bottom: 30px; white-space: pre-line; }
+                            .vocabulary, .multiple-choice, .translation, .answers { margin-bottom: 30px; }
+                            @media print {
+                                body { margin: 0; }
+                                h1, h2 { page-break-after: avoid; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${printContent}
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
             }
             
             // 初始化时禁用操作按钮
             document.getElementById('save-article-btn').disabled = true;
             document.getElementById('preview-pdf-btn').disabled = true;
-            document.getElementById('export-pdf-btn').disabled = true;
+            document.getElementById('print-btn').disabled = true;
+            document.getElementById('regenerate-btn').disabled = true;
+            // 清空按钮始终保持启用状态
+            document.getElementById('clear-all-btn').disabled = false;
                             vocabList.appendChild(ul);
                         } else {
                             vocabList.textContent = '无词汇列表';
                         }
                         
-                        // 填充阅读理解问题
-                        const questionsDiv = document.getElementById('comprehension-questions');
-                        questionsDiv.innerHTML = '';
-                        if (articleData.questions && articleData.questions.length > 0) {
-                            const ol = document.createElement('ol');
-                            articleData.questions.forEach(item => {
-                                const li = document.createElement('li');
-                                li.innerHTML = `<div><strong>${item.question}</strong></div>
-                                               <div style="margin-top: 5px;">答案: ${item.answer}</div>`;
-                                ol.appendChild(li);
+
+                        
+                        // 填充选择题
+                        const multipleChoiceDiv = document.getElementById('multiple-choice-questions');
+                        const multipleChoiceTitle = document.getElementById('multiple-choice-title');
+                        multipleChoiceDiv.innerHTML = '';
+                        if (articleData.multiple_choice && articleData.multiple_choice.length > 0) {
+                            multipleChoiceTitle.style.display = 'block';
+                            articleData.multiple_choice.forEach((item, index) => {
+                                const questionDiv = document.createElement('div');
+                                questionDiv.className = 'question-item';
+                                questionDiv.style.marginBottom = '20px';
+                                
+                                let optionsHtml = '';
+                                if (item.options && item.options.length > 0) {
+                                    const optionLabels = ['A', 'B', 'C', 'D'];
+                                    optionsHtml = item.options.map((option, optIndex) => {
+                                        const label = optionLabels[optIndex] || String.fromCharCode(65 + optIndex);
+                                        // 如果选项已经包含A、B、C、D标识，直接使用，否则添加标识
+                                        const displayOption = option.match(/^[A-D][\.\)\s]/) ? option : `${label}. ${option}`;
+                                        return `<div class="option" style="margin-left: 20px; margin-top: 5px;">${displayOption}</div>`;
+                                    }).join('');
+                                }
+                                
+                                questionDiv.innerHTML = `
+                                    <div class="question-text"><strong>${index + 1}. ${item.question}</strong></div>
+                                    ${optionsHtml}
+                                `;
+                                multipleChoiceDiv.appendChild(questionDiv);
                             });
-                            questionsDiv.appendChild(ol);
                         } else {
-                            questionsDiv.textContent = '无阅读理解问题';
+                            multipleChoiceTitle.style.display = 'none';
+                        }
+                        
+                        // 填充参考译文
+                        const translationDiv = document.getElementById('reference-translation');
+                        const translationTitle = document.getElementById('translation-title');
+                        if (articleData.translation) {
+                            translationTitle.style.display = 'block';
+                            translationDiv.textContent = articleData.translation;
+                        } else {
+                            translationTitle.style.display = 'none';
+                            translationDiv.textContent = '';
+                        }
+                        
+                        // 填充选择题答案
+                        const answersDiv = document.getElementById('answers-section');
+                        const answersTitle = document.getElementById('answers-title');
+                        if (articleData.multiple_choice && articleData.multiple_choice.length > 0) {
+                            answersTitle.style.display = 'block';
+                            const answersHtml = articleData.multiple_choice.map((item, index) => {
+                                return `<div style="margin-bottom: 5px;">${index + 1}. ${item.correct_answer || 'N/A'}</div>`;
+                            }).join('');
+                            answersDiv.innerHTML = answersHtml;
+                        } else {
+                            answersTitle.style.display = 'none';
+                            answersDiv.innerHTML = '';
                         }
                         
                         // 滚动到结果区域
@@ -665,7 +1274,18 @@
                         // 启用操作按钮
                         document.getElementById('save-article-btn').disabled = false;
                         document.getElementById('preview-pdf-btn').disabled = false;
-                        document.getElementById('export-pdf-btn').disabled = false;
+                        document.getElementById('print-btn').disabled = false;
+                        document.getElementById('regenerate-btn').disabled = false;
+                        document.getElementById('clear-all-btn').disabled = false;
+                        
+                        // 保存生成的内容到localStorage
+                        saveGeneratedContent({
+                            lexile: parseInt(lexileLevel),
+                            topic: topic,
+                            vocabulary: vocabulary,
+                            word_count: parseInt(wordCount),
+                            generated_data: articleData
+                        });
                     } else {
                         alert('生成文章失败：' + data.message);
                     }

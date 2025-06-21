@@ -1483,8 +1483,10 @@ def generate_lexile_article():
         请根据提供的蓝思指数、主题和词汇列表，创建适合英语学习者的原创文章。
         输出格式必须是JSON格式，包含以下字段：
         - content: 文章内容
-        - vocabulary: 词汇表，包含单词、翻译和定义
-        - questions: 阅读理解问题
+        - vocabulary: 词汇表，包含单词、音标、翻译和定义
+        - multiple_choice: 选择题（5道题，每题4个选项）
+        - translation: 参考译文
+        - answers: 答案标识（用于标识是否包含答案）
         """
         
         # 构建用户提示词，根据是否有词汇列表调整内容
@@ -1499,11 +1501,17 @@ def generate_lexile_article():
 
 请生成以下内容（JSON格式）：
 1. content: 文章内容
-2. vocabulary: 词汇表，包含文章中使用的所有指定词汇，每个词汇包括：
+2. vocabulary: 词汇表，包含8-12个文章中的重要词汇，每个词汇包括：
    - word: 单词
+   - phonetic: 音标（使用国际音标IPA格式）
    - translation: 中文翻译
    - definition: 英文释义
-3. questions: 5个阅读理解问题，考察对文章的理解
+3. multiple_choice: 5道选择题，每道题包括：
+   - question: 题目
+   - options: 4个选项的数组，每个选项必须以A、B、C、D开头（如"A. 选项内容"）
+   - correct_answer: 正确答案（如A、B、C、D）
+4. translation: 文章的中文参考译文
+5. answers: 设置为true，表示包含答案
 
 请确保输出是有效的JSON格式，可以直接被解析。
 """
@@ -1516,11 +1524,17 @@ def generate_lexile_article():
 
 请生成以下内容（JSON格式）：
 1. content: 文章内容
-2. vocabulary: 词汇表，包含文章中的重要词汇，每个词汇包括：
+2. vocabulary: 词汇表，包含8-12个文章中的重要词汇，每个词汇包括：
    - word: 单词
+   - phonetic: 音标（使用国际音标IPA格式）
    - translation: 中文翻译
    - definition: 英文释义
-3. questions: 5个阅读理解问题，考察对文章的理解
+3. multiple_choice: 5道选择题，每道题包括：
+   - question: 题目
+   - options: 4个选项的数组，每个选项必须以A、B、C、D开头（如"A. 选项内容"）
+   - correct_answer: 正确答案（如A、B、C、D）
+4. translation: 文章的中文参考译文
+5. answers: 设置为true，表示包含答案
 
 请确保输出是有效的JSON格式，可以直接被解析。
 """
@@ -1699,6 +1713,9 @@ def generate_lexile_article():
                     'content': data.get('content', ''),
                     'vocabulary': data.get('vocabulary', []),
                     'questions': data.get('questions', []),
+                    'multiple_choice': data.get('multiple_choice', []),
+                    'translation': data.get('translation', ''),
+                    'answers': data.get('answers', True),
                     'topic': topic,
                     'lexile': lexile,
                     'word_count': word_count,
@@ -1913,12 +1930,10 @@ def save_article():
         if not data.get('title') or not data.get('content'):
             return jsonify({'success': False, 'message': '标题和内容不能为空'})
         
-        # 构建完整的文章内容，包含词汇和问题
+        # 构建完整的文章内容，包含词汇
         full_content = data.get('content', '')
         if data.get('vocabulary'):
             full_content += "\n\n词汇列表:\n" + data.get('vocabulary', '')
-        if data.get('questions'):
-            full_content += "\n\n阅读理解问题:\n" + data.get('questions', '')
         
         # 创建新文章
         new_article = Article(
@@ -1962,7 +1977,6 @@ def export_article_pdf():
         title = data.get('title', '未命名文章')
         content = data.get('content', '')
         vocabulary = data.get('vocabulary', '')
-        questions = data.get('questions', '')
         
         # 创建PDF缓冲区
         buffer = io.BytesIO()
@@ -2113,23 +2127,7 @@ def export_article_pdf():
                             clean_line = html.escape(line)
                             story.append(Paragraph(clean_line, content_style))
             
-            # 添加阅读理解问题
-            if questions:
-                story.append(Spacer(1, 20))
-                story.append(Paragraph('阅读理解问题', subtitle_style))
-                # 处理问题列表，可能包含HTML格式
-                questions_text = str(questions).strip()
-                if questions_text:
-                    # 简单处理HTML列表
-                    question_lines = questions_text.replace('<li>', '').replace('</li>', '\n').split('\n')
-                    question_num = 1
-                    for line in question_lines:
-                        line = line.strip()
-                        if line and not line.startswith('<'):
-                            clean_line = html.escape(line)
-                            if clean_line:
-                                story.append(Paragraph(f"{question_num}. {clean_line}", content_style))
-                                question_num += 1
+
                                 
         except Exception as content_error:
             print(f"处理PDF内容时出错: {content_error}")

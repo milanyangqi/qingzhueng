@@ -4,6 +4,8 @@
 <meta charset=UTF-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>英语阅读理解生成工具</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <!-- PDF导出相关库 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -240,7 +242,78 @@ textarea {
 </style>
 </head>
 <body>
-<div class="container">
+<div class="dashboard">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-book-open"></i>
+                <h2>英语学习平台</h2>
+            </div>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-home"></i>
+                    <span>首页</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('create_article') }}">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>创建文章</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('history_articles') }}">
+                    <i class="fas fa-history"></i>
+                    <span>历史文章</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('formatting') }}">
+                    <i class="fas fa-file-alt"></i>
+                    <span>排版工具</span>
+                </a>
+            </li>
+            <li class="nav-item active">
+                <a href="{{ url_for('reading_comprehension') }}">
+                    <i class="fas fa-question-circle"></i>
+                    <span>阅读理解</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>学习统计</span>
+                    <span class="coming-soon">即将推出</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#">
+                    <i class="fas fa-cog"></i>
+                    <span>设置</span>
+                    <span class="coming-soon">即将推出</span>
+                </a>
+            </li>
+            <div class="admin-section">
+                <li class="nav-item">
+                    <a href="#">
+                        <i class="fas fa-users"></i>
+                        <span>用户管理</span>
+                        <span class="coming-soon">即将推出</span>
+                    </a>
+                </li>
+            </div>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" style="color: #666; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>退出登录</span>
+            </a>
+        </div>
+    </nav>
+    <div class="main-content" style="margin-left: 280px; width: calc(100% - 280px);">
+        <div class="container">
     <div class="content-area">
         <div class="header">
             <h1>英语阅读理解生成工具</h1>
@@ -1232,5 +1305,8 @@ const saveArticleBtn = document.getElementById('save-article-btn');
     });
 });
 </script>
+        </div>
+    </div>
+</div>
 </body>
 </html>
