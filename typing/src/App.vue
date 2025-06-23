@@ -120,27 +120,23 @@ async function checkLoginStatus() {
       console.log('用户未登录，重定向到主项目登录页面')
       
       // 获取主项目URL（用于重定向）
-      let loginUrl;
-      
-      // 1. 首先检查是否有环境变量（Docker环境）
-      if (import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL) {
-        loginUrl = import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL;
-      }
-      // 2. 如果是生产环境但没有环境变量，则从当前URL推断
-      else if (process.env.NODE_ENV === 'production') {
-        // 修改：与上面相同的逻辑处理登录URL
-        const currentOrigin = window.location.origin;
-        if (currentOrigin.includes(':3000')) {
-          loginUrl = currentOrigin.replace(':3000', ':5001');
-        } else {
-          const hostname = window.location.hostname;
-          loginUrl = `http://${hostname}:5001`;
-        }
-      }
-      // 3. 开发环境使用硬编码的URL
-      else {
-        loginUrl = 'http://localhost:5001';
-      }
+    // 始终使用用户浏览器可访问的URL，而不是Docker内部网络URL
+    let loginUrl;
+    
+    // 从当前URL推断用户可访问的主项目URL
+    const currentOrigin = window.location.origin;
+    const hostname = window.location.hostname;
+    
+    if (currentOrigin.includes(':3000')) {
+      loginUrl = currentOrigin.replace(':3000', ':5001');
+    } else {
+      loginUrl = `http://${hostname}:5001`;
+    }
+    
+    // 开发环境使用硬编码的URL
+    if (process.env.NODE_ENV !== 'production') {
+      loginUrl = 'http://localhost:5001';
+    }
       
       window.location.href = `${loginUrl}/?redirect=${encodeURIComponent(window.location.href)}`
       return false
@@ -154,25 +150,21 @@ async function checkLoginStatus() {
     console.log('登录检查出错，提示用户登录');
     
     // 获取主项目URL（用于重定向）
+    // 始终使用用户浏览器可访问的URL，而不是Docker内部网络URL
     let loginUrl;
     
-    // 1. 首先检查是否有环境变量（Docker环境）
-    if (import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL) {
-      loginUrl = import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL;
+    // 从当前URL推断用户可访问的主项目URL
+    const currentOrigin = window.location.origin;
+    const hostname = window.location.hostname;
+    
+    if (currentOrigin.includes(':3000')) {
+      loginUrl = currentOrigin.replace(':3000', ':5001');
+    } else {
+      loginUrl = `http://${hostname}:5001`;
     }
-    // 2. 如果是生产环境但没有环境变量，则从当前URL推断
-    else if (process.env.NODE_ENV === 'production') {
-      // 修改：与上面相同的逻辑处理登录URL
-      const currentOrigin = window.location.origin;
-      if (currentOrigin.includes(':3000')) {
-        loginUrl = currentOrigin.replace(':3000', ':5001');
-      } else {
-        const hostname = window.location.hostname;
-        loginUrl = `http://${hostname}:5001`;
-      }
-    }
-    // 3. 开发环境使用硬编码的URL
-    else {
+    
+    // 开发环境使用硬编码的URL
+    if (process.env.NODE_ENV !== 'production') {
       loginUrl = 'http://localhost:5001';
     }
     
