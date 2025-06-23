@@ -8,16 +8,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# 安装git（用于git-last-commit包）
+RUN apk add --no-cache git wget
+
 # 复制package文件
 COPY package*.json ./
 COPY pnpm-lock.yaml ./
 
-# 安装pnpm、wget并安装依赖
-RUN apk add --no-cache wget && \
-    npm install -g pnpm && \
+# 安装pnpm、serve并安装依赖
+RUN npm install -g pnpm serve && \
     pnpm install --frozen-lockfile
 
-# 复制应用代码
+# 复制应用代码（包括.git目录）
 COPY . .
 
 # 构建应用
@@ -34,9 +36,9 @@ USER typing
 # 暴露端口
 EXPOSE 3000
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+# 健康检查（增加启动时间）
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
 # 启动命令
-CMD ["pnpm", "preview", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["serve", "-s", "dist", "-l", "3000"]
