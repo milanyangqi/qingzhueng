@@ -1510,6 +1510,7 @@ def generate_lexile_article():
    - question: 题目
    - options: 4个选项的数组，每个选项必须以A、B、C、D开头（如"A. 选项内容"）
    - correct_answer: 正确答案（如A、B、C、D）
+   注意：请确保5道题的正确答案分布均匀，不要让所有答案都是同一个选项（如都是A或都是B），应该在A、B、C、D之间合理分布
 4. translation: 文章的中文参考译文
 5. answers: 设置为true，表示包含答案
 
@@ -1533,6 +1534,7 @@ def generate_lexile_article():
    - question: 题目
    - options: 4个选项的数组，每个选项必须以A、B、C、D开头（如"A. 选项内容"）
    - correct_answer: 正确答案（如A、B、C、D）
+   注意：请确保5道题的正确答案分布均匀，不要让所有答案都是同一个选项（如都是A或都是B），应该在A、B、C、D之间合理分布
 4. translation: 文章的中文参考译文
 5. answers: 设置为true，表示包含答案
 

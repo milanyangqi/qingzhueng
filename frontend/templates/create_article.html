@@ -370,7 +370,7 @@
             <div id="article-result" style="display: none; margin-top: 30px;">
                 <h3 class="result-title">生成的文章</h3>
                 <div class="result-content">
-                    <h4 id="article-title"></h4>
+                    <h2 id="article-title" style="text-align: center; font-size: 24px; color: #1a237e; margin-bottom: 20px;"></h2>
                     <div id="article-content" style="white-space: pre-line; margin-bottom: 20px;"></div>
                     
                     <h4>词汇列表</h4>
@@ -1022,9 +1022,9 @@ ${multipleChoiceText ? `## 选择题\n\n${multipleChoiceText}\n\n` : ''}${transl
                 // 创建一个临时容器用于PDF导出
                 const exportContainer = document.createElement('div');
                 exportContainer.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
+                    position: absolute;
+                    top: -9999px;
+                    left: -9999px;
                     width: 794px;
                     max-width: 100vw;
                     box-sizing: border-box;
@@ -1033,9 +1033,7 @@ ${multipleChoiceText ? `## 选择题\n\n${multipleChoiceText}\n\n` : ''}${transl
                     font-family: 'Microsoft YaHei', Arial, sans-serif;
                     color: #333;
                     line-height: 1.6;
-                    z-index: -1;
-                    opacity: 0;
-                    pointer-events: none;
+                    visibility: visible;
                 `;
                 
                 // 克隆预览内容
@@ -1063,22 +1061,21 @@ ${multipleChoiceText ? `## 选择题\n\n${multipleChoiceText}\n\n` : ''}${transl
                 exportContainer.appendChild(clonedContent);
                 document.body.appendChild(exportContainer);
                 
+                // 调试信息：检查导出容器
+                console.log('导出容器尺寸:', exportContainer.offsetWidth, 'x', exportContainer.offsetHeight);
+                console.log('导出容器内容:', exportContainer.innerHTML.substring(0, 300));
+                
                 // 等待内容渲染完成
                 setTimeout(() => {
                 
                 // 使用html2canvas和jsPDF生成PDF
                 if (typeof html2canvas !== 'undefined' && (typeof jsPDF !== 'undefined' || (window.jspdf && window.jspdf.jsPDF))) {
                     html2canvas(exportContainer, {
-                        scale: 2,
+                        scale: 1,
                         useCORS: true,
                         allowTaint: true,
                         backgroundColor: '#ffffff',
-                        width: exportContainer.scrollWidth,
-                        height: exportContainer.scrollHeight,
-                        scrollX: 0,
-                        scrollY: 0,
-                        logging: true,
-                        foreignObjectRendering: false
+                        logging: true
                     }).then(canvas => {
                         const imgData = canvas.toDataURL('image/png');
                         const PDFConstructor = (typeof jsPDF !== 'undefined') ? jsPDF : window.jspdf.jsPDF;
