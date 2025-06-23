@@ -70,12 +70,7 @@ async function init() {
 
 // 检查用户是否已在主项目中登录
 async function checkLoginStatus() {
-  // 在Docker环境中，直接跳过登录检查
-  // 这是为了解决服务器Docker环境中的访问问题
-  if (process.env.NODE_ENV === 'production') {
-    console.log('生产环境中跳过登录检查，直接初始化应用');
-    return true;
-  }
+  // 不再跳过登录检查，确保所有环境都验证登录状态
   
   try {
     // 获取主项目的域名和端口
@@ -155,10 +150,36 @@ async function checkLoginStatus() {
     return true
   } catch (error) {
     console.error('检查登录状态时出错:', error)
-    // 在出错时，直接跳过登录检查，返回true
-    // 这样可以避免因登录检查失败而无法加载应用
-    console.log('登录检查出错，跳过登录检查，直接初始化应用');
-    return true;
+    // 在出错时，不再跳过登录检查，而是提示用户登录
+    console.log('登录检查出错，提示用户登录');
+    
+    // 获取主项目URL（用于重定向）
+    let loginUrl;
+    
+    // 1. 首先检查是否有环境变量（Docker环境）
+    if (import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL) {
+      loginUrl = import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL;
+    }
+    // 2. 如果是生产环境但没有环境变量，则从当前URL推断
+    else if (process.env.NODE_ENV === 'production') {
+      // 修改：与上面相同的逻辑处理登录URL
+      const currentOrigin = window.location.origin;
+      if (currentOrigin.includes(':3000')) {
+        loginUrl = currentOrigin.replace(':3000', ':5001');
+      } else {
+        const hostname = window.location.hostname;
+        loginUrl = `http://${hostname}:5001`;
+      }
+    }
+    // 3. 开发环境使用硬编码的URL
+    else {
+      loginUrl = 'http://localhost:5001';
+    }
+    
+    // 显示登录提示，并提供登录链接
+    alert('请先登录主系统后再使用此功能！');
+    window.location.href = `${loginUrl}/?redirect=${encodeURIComponent(window.location.href)}`;
+    return false;
   }
 }
 
