@@ -19,13 +19,26 @@ app = Flask(__name__,
             template_folder='../frontend/templates')
 
 # CORS配置
-# 添加Docker环境中的域名
-CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://typing:3000', 'http://web:5001'])
+# 添加Docker环境中的域名和IP地址
+# 注意：不能同时使用'*'和supports_credentials=True
+CORS(app, 
+     supports_credentials=True, 
+     origins=['http://localhost:3000', 'http://127.0.0.1:3000', 
+             'http://localhost:5173', 'http://127.0.0.1:5173', 
+             'http://typing:3000', 'http://web:5001',
+             'http://192.168.31.8:3000', 'http://192.168.31.8:5001'],
+     allow_headers=['Content-Type', 'Authorization'],
+     expose_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 # 配置数据库
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qingzhu_english.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.urandom(24)
+app.config['SECRET_KEY'] = 'qingzhu_english_secret_key'  # 使用固定的密钥，避免重启后会话失效
+app.config['SESSION_COOKIE_SECURE'] = False  # 允许非HTTPS连接使用Cookie
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # 防止JavaScript访问Cookie
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # 允许跨站点请求携带Cookie
+app.config['SESSION_COOKIE_DOMAIN'] = None  # 自动使用当前域名
 app.permanent_session_lifetime = timedelta(days=7)
 
 db = SQLAlchemy(app)
@@ -433,13 +446,20 @@ def login():
         user = User.query.filter_by(username=data['username']).first()
         
         if user and bcrypt.check_password_hash(user.password_hash, data['password']):
+            # 设置会话为永久会话
+            session.permanent = True
             session['user_id'] = user.id
             session['username'] = user.username
             session['is_admin'] = user.is_admin
             
+            # 打印会话信息，用于调试
+            print(f"用户登录成功: {user.username}, 会话ID: {session.sid if hasattr(session, 'sid') else '未知'}")
+            print(f"会话内容: user_id={session.get('user_id')}, username={session.get('username')}")
+            
             # 检查是否有重定向URL
             redirect_url = data.get('redirect')
             if redirect_url:
+                print(f"重定向URL: {redirect_url}")
                 return jsonify({
                     'success': True, 
                     'message': '登录成功', 
@@ -450,6 +470,11 @@ def login():
                 return jsonify({'success': True, 'message': '登录成功', 'is_admin': user.is_admin})
         else:
             return jsonify({'success': False, 'message': '用户名或密码错误'})
+    
+    # 获取重定向URL参数
+    redirect_param = request.args.get('redirect')
+    if redirect_param:
+        return render_template('index.html', redirect_url=redirect_param)
     
     return redirect(url_for('index'))
 
@@ -2233,15 +2258,31 @@ def check_login_status():
     Returns:
         JSON: 包含登录状态和用户信息的JSON响应
     """
+    # 打印请求信息，用于调试
+    print(f"\n检查登录状态API被调用")
+    print(f"请求来源: {request.remote_addr}")
+    print(f"请求头: {dict(request.headers)}")
+    print(f"Cookie: {request.cookies}")
+    print(f"会话内容: {dict(session)}")
+    
+    # 确保会话可用
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
         if user:
-            return jsonify({
+            print(f"用户已登录: user_id={session.get('user_id')}, username={user.username}")
+            response = jsonify({
                 'logged_in': True,
                 'user_id': user.id,
                 'username': user.username,
                 'is_admin': user.is_admin
             })
+            # 设置响应头，确保跨域请求正确处理
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            return response
+        else:
+            print(f"会话中有user_id但用户不存在: {session.get('user_id')}")
+    else:
+        print("用户未登录，会话中没有user_id")
     
     return jsonify({
         'logged_in': False

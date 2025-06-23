@@ -73,40 +73,51 @@ async function checkLoginStatus() {
   // 不再跳过登录检查，确保所有环境都验证登录状态
   
   try {
-    // 获取主项目的域名和端口
+    // 获取主应用URL
     let mainAppUrl = '';
     
-    // 1. 首先检查是否有环境变量（Docker环境）
-    if (import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL) {
-      mainAppUrl = import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL;
-      console.log('使用环境变量中的主项目URL:', mainAppUrl);
-    }
-    // 2. 如果是生产环境但没有环境变量，则从当前URL推断
-    else if (process.env.NODE_ENV === 'production') {
-      // 修改：在Docker环境中，如果URL包含3000端口，则替换为5001
-      // 如果不包含端口号，则直接使用原始URL
-      const currentOrigin = window.location.origin;
-      if (currentOrigin.includes(':3000')) {
-        mainAppUrl = currentOrigin.replace(':3000', ':5001');
-      } else {
-        // 如果是在服务器上直接访问3000端口，则使用相同的主机名但端口为5001
+    // 生产环境：尝试从环境变量获取主应用URL
+    if (process.env.NODE_ENV === 'production') {
+      // 尝试从环境变量获取主应用URL
+      mainAppUrl = import.meta.env.VITE_MAIN_APP_URL || process.env.MAIN_APP_URL;
+      
+      // 如果环境变量未设置，从当前URL推断
+      if (!mainAppUrl) {
+        const currentOrigin = window.location.origin;
         const hostname = window.location.hostname;
-        mainAppUrl = `http://${hostname}:5001`;
+        
+        if (currentOrigin.includes(':3000')) {
+          mainAppUrl = currentOrigin.replace(':3000', ':5001');
+        } else {
+          mainAppUrl = `http://${hostname}:5001`;
+        }
       }
-      console.log('从当前URL推断主项目URL:', mainAppUrl);
-    }
-    // 3. 开发环境使用空字符串（通过代理访问）
-    else {
-      console.log('使用开发环境代理访问主项目API');
+    } else {
+      // 开发环境：使用硬编码的URL
+      mainAppUrl = 'http://localhost:5001';
     }
     
+    console.log('主应用URL:', mainAppUrl);
+    
+    // 添加时间戳，避免缓存问题
+    const timestamp = new Date().getTime();
+    const apiUrl = `${mainAppUrl}/api/check_login_status?t=${timestamp}`;
+    
     // 调用主项目的登录状态检查API
-    const response = await fetch(`${mainAppUrl}/api/check_login_status`, {
+    console.log('正在检查登录状态，API地址:', apiUrl);
+    
+    // 打印当前Cookie信息
+    console.log('当前Cookie:', document.cookie);
+    
+    const response = await fetch(apiUrl, {
       method: 'GET',
       credentials: 'include', // 包含跨域请求的cookies
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store'
+      },
+      mode: 'cors', // 明确指定跨域模式
+      cache: 'no-store' // 禁用缓存
     })
     
     if (!response.ok) {
@@ -120,26 +131,31 @@ async function checkLoginStatus() {
       console.log('用户未登录，重定向到主项目登录页面')
       
       // 获取主项目URL（用于重定向）
-    // 始终使用用户浏览器可访问的URL，而不是Docker内部网络URL
-    let loginUrl;
-    
-    // 从当前URL推断用户可访问的主项目URL
-    const currentOrigin = window.location.origin;
-    const hostname = window.location.hostname;
-    
-    if (currentOrigin.includes(':3000')) {
-      loginUrl = currentOrigin.replace(':3000', ':5001');
-    } else {
-      loginUrl = `http://${hostname}:5001`;
-    }
-    
-    // 开发环境使用硬编码的URL
-    if (process.env.NODE_ENV !== 'production') {
-      loginUrl = 'http://localhost:5001';
-    }
+      // 始终使用用户浏览器可访问的URL，而不是Docker内部网络URL
+      let loginUrl;
       
-      window.location.href = `${loginUrl}/?redirect=${encodeURIComponent(window.location.href)}`
-      return false
+      // 从当前URL推断用户可访问的主项目URL
+      const currentOrigin = window.location.origin;
+      const hostname = window.location.hostname;
+      
+      if (currentOrigin.includes(':3000')) {
+        loginUrl = currentOrigin.replace(':3000', ':5001');
+      } else {
+        loginUrl = `http://${hostname}:5001`;
+      }
+      
+      // 开发环境使用硬编码的URL
+      if (process.env.NODE_ENV !== 'production') {
+        loginUrl = 'http://localhost:5001';
+      }
+      
+      // 添加时间戳参数，避免缓存问题
+      const redirectUrl = `${window.location.href}${window.location.href.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      console.log('重定向URL:', `${loginUrl}/?redirect=${encodeURIComponent(redirectUrl)}`);
+      
+      // 使用完整URL进行重定向
+      window.location.href = `${loginUrl}/?redirect=${encodeURIComponent(redirectUrl)}`;
+      return false;
     }
     
     console.log('用户已登录:', data.username)
