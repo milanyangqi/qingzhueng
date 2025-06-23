@@ -62,6 +62,10 @@ export default defineConfig(async () => {
       proxy: {
         '/baidu': 'https://api.fanyi.baidu.com/api/trans/vip/translate'
       }
+    },
+    preview: {
+      port: 3000,
+      host: '0.0.0.0'
     }
   }
 })

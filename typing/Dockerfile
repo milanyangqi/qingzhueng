@@ -12,8 +12,9 @@ ENV PORT=3000
 COPY package*.json ./
 COPY pnpm-lock.yaml ./
 
-# 安装pnpm并安装依赖
-RUN npm install -g pnpm && \
+# 安装pnpm、wget并安装依赖
+RUN apk add --no-cache wget && \
+    npm install -g pnpm && \
     pnpm install --frozen-lockfile
 
 # 复制应用代码
