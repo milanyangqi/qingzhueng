@@ -581,6 +581,7 @@ defineExpose({getDictDetail, add: addWord, editDict})
                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                    @change="importData">
           </div>
+          <!-- 导出按钮已隐藏，需要时可取消注释恢复
           <div class="export"
                style="position: relative"
                @click.stop="null">
@@ -600,6 +601,7 @@ defineExpose({getDictDetail, add: addWord, editDict})
               </div>
             </MiniDialog>
           </div>
+          -->
         </div>
         <div class="desc" v-if="runtimeStore.editDict.description">{{ runtimeStore.editDict.description }}</div>
         <div class="num">总词汇: {{ runtimeStore.editDict.length }}词</div>

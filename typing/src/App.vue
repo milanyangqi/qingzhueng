@@ -68,8 +68,82 @@ async function init() {
   setTheme(settingStore.theme)
 }
 
-onMounted(() => {
-  init()
+// 检查用户是否已在主项目中登录
+async function checkLoginStatus() {
+  try {
+    // 获取主项目的域名和端口
+    let mainAppUrl = '';
+    
+    // 1. 首先检查是否有环境变量（Docker环境）
+    if (import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL) {
+      mainAppUrl = import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL;
+      console.log('使用环境变量中的主项目URL:', mainAppUrl);
+    }
+    // 2. 如果是生产环境但没有环境变量，则从当前URL推断
+    else if (process.env.NODE_ENV === 'production') {
+      mainAppUrl = window.location.origin.replace(':3000', ':5001');
+      console.log('从当前URL推断主项目URL:', mainAppUrl);
+    }
+    // 3. 开发环境使用空字符串（通过代理访问）
+    else {
+      console.log('使用开发环境代理访问主项目API');
+    }
+    
+    // 调用主项目的登录状态检查API
+    const response = await fetch(`${mainAppUrl}/api/check_login_status`, {
+      method: 'GET',
+      credentials: 'include', // 包含跨域请求的cookies
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    
+    // 如果未登录，重定向到主项目的登录页面
+    if (!data.logged_in) {
+      console.log('用户未登录，重定向到主项目登录页面')
+      
+      // 获取主项目URL（用于重定向）
+      let loginUrl;
+      
+      // 1. 首先检查是否有环境变量（Docker环境）
+      if (import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL) {
+        loginUrl = import.meta.env.VITE_MAIN_APP_URL || import.meta.env.MAIN_APP_URL;
+      }
+      // 2. 如果是生产环境但没有环境变量，则从当前URL推断
+      else if (process.env.NODE_ENV === 'production') {
+        loginUrl = window.location.origin.replace(':3000', ':5001');
+      }
+      // 3. 开发环境使用硬编码的URL
+      else {
+        loginUrl = 'http://localhost:5001';
+      }
+      
+      window.location.href = `${loginUrl}/?redirect=${encodeURIComponent(window.location.href)}`
+      return false
+    }
+    
+    console.log('用户已登录:', data.username)
+    return true
+  } catch (error) {
+    console.error('检查登录状态时出错:', error)
+    return false
+  }
+}
+
+onMounted(async () => {
+  // 首先检查登录状态
+  const isLoggedIn = await checkLoginStatus()
+  
+  // 只有在已登录的情况下才初始化应用
+  if (isLoggedIn) {
+    init()
+  }
 
   if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
     // 当前设备是移动设备

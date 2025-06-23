@@ -436,7 +436,17 @@ def login():
             session['username'] = user.username
             session['is_admin'] = user.is_admin
             
-            return jsonify({'success': True, 'message': '登录成功', 'is_admin': user.is_admin})
+            # 检查是否有重定向URL
+            redirect_url = data.get('redirect')
+            if redirect_url:
+                return jsonify({
+                    'success': True, 
+                    'message': '登录成功', 
+                    'is_admin': user.is_admin,
+                    'redirect_url': redirect_url
+                })
+            else:
+                return jsonify({'success': True, 'message': '登录成功', 'is_admin': user.is_admin})
         else:
             return jsonify({'success': False, 'message': '用户名或密码错误'})
     
@@ -2213,6 +2223,28 @@ def create_default_admin():
         print("默认管理员账号已创建: admin / admin123")
     else:
         print("管理员账号已存在")
+
+# 路由：检查用户登录状态API
+@app.route('/api/check_login_status', methods=['GET'])
+def check_login_status():
+    """检查用户是否已登录的API端点
+    
+    Returns:
+        JSON: 包含登录状态和用户信息的JSON响应
+    """
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user:
+            return jsonify({
+                'logged_in': True,
+                'user_id': user.id,
+                'username': user.username,
+                'is_admin': user.is_admin
+            })
+    
+    return jsonify({
+        'logged_in': False
+    })
 
 if __name__ == '__main__':
     with app.app_context():

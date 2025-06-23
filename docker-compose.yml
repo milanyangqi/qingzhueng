@@ -34,6 +34,8 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      # 设置主项目的URL，用于API请求
+      - MAIN_APP_URL=http://web:5001
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]

@@ -93,6 +93,42 @@
     <!-- 消息提示 -->
     <div id="message" class="message"></div>
     
+    <!-- 如果有重定向参数，显示提示信息 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectUrl = urlParams.get('redirect');
+            
+            if (redirectUrl) {
+                const messageEl = document.createElement('div');
+                messageEl.className = 'redirect-notice';
+                messageEl.innerHTML = '<i class="fas fa-info-circle"></i> 请先登录以继续访问 <strong>打字练习</strong> 模块';
+                
+                const authContainer = document.querySelector('.auth-container');
+                authContainer.insertBefore(messageEl, authContainer.firstChild);
+                
+                // 添加样式
+                const style = document.createElement('style');
+                style.textContent = `
+                    .redirect-notice {
+                        background-color: #e3f2fd;
+                        color: #0d47a1;
+                        padding: 10px 15px;
+                        border-radius: 5px;
+                        margin-bottom: 20px;
+                        text-align: center;
+                        font-weight: 500;
+                        border-left: 4px solid #1976d2;
+                    }
+                    .redirect-notice i {
+                        margin-right: 8px;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        });
+    </script>
+    
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </body>
 </html>

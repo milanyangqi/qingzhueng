@@ -49,7 +49,7 @@ const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
           <div class="collect" v-if="showNotice">
             <div class="href-wrapper">
               <div class="round">
-                <div class="href">typing-word.ttentau.top</div>
+                <div class="href">type.eng150.com</div>
                 <Icon
                     width="22"
                     icon="mdi:star-outline"/>

@@ -75,8 +75,14 @@ export default defineConfig(async () => {
         strict: false,
       },
       proxy: {
-        '/baidu': 'https://api.fanyi.baidu.com/api/trans/vip/translate'
-      }
+        '/api': {
+          target: 'http://localhost:5001',
+          changeOrigin: true,
+          secure: false,
+          credentials: 'include',
+        }
+      },
+      cors: true
     }
   }
 })

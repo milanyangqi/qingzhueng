@@ -36,6 +36,10 @@ document.getElementById('loginFormElement').addEventListener('submit', async fun
         return;
     }
     
+    // 获取URL中的redirect参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectUrl = urlParams.get('redirect');
+    
     try {
         const response = await fetch('/login', {
             method: 'POST',
@@ -44,7 +48,8 @@ document.getElementById('loginFormElement').addEventListener('submit', async fun
             },
             body: JSON.stringify({
                 username: username,
-                password: password
+                password: password,
+                redirect: redirectUrl // 将重定向URL传递给后端
             })
         });
         
@@ -53,7 +58,12 @@ document.getElementById('loginFormElement').addEventListener('submit', async fun
         if (data.success) {
             showMessage('登录成功，正在跳转...', 'success');
             setTimeout(() => {
-                window.location.href = '/dashboard';
+                // 如果有重定向URL，则跳转到该URL，否则跳转到仪表盘
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    window.location.href = '/dashboard';
+                }
             }, 1000);
         } else {
             showMessage(data.message, 'error');

@@ -15,9 +15,7 @@ export const axiosInstance: AxiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     // console.log('config', config)
-    if (config.url === 'https://api.fanyi.baidu.com/api/trans/vip/translate') {
-      config.url = '/baidu'
-    }
+    // 百度翻译API相关代码已移除
     return config
   },
   error => Promise.reject(error),
