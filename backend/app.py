@@ -2198,9 +2198,26 @@ def export_article_pdf():
         print(f"导出PDF出错: {str(e)}")
         return jsonify({'success': False, 'message': f'导出失败: {str(e)}'})
 
+def create_default_admin():
+    """创建默认管理员账号"""
+    admin_user = User.query.filter_by(username='admin').first()
+    if not admin_user:
+        admin_user = User(
+            username='admin',
+            email='admin@qingzhu.com',
+            is_admin=True
+        )
+        admin_user.set_password('admin123')
+        db.session.add(admin_user)
+        db.session.commit()
+        print("默认管理员账号已创建: admin / admin123")
+    else:
+        print("管理员账号已存在")
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        create_default_admin()
     app.run(debug=True, host='0.0.0.0', port=5001)
 
 # 注意：此路由已在前面定义，这里删除重复定义

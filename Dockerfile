@@ -52,19 +52,8 @@ RUN chmod -R 755 /app
 RUN groupadd -r qingzhu && useradd -r -g qingzhu qingzhu
 RUN chown -R qingzhu:qingzhu /app/data /app/logs /app/instance
 
-# 创建初始化脚本
+# 创建启动脚本
 RUN echo '#!/bin/sh\n\
-python -c "\n\
-from backend.app import db, User, app\n\
-with app.app_context():\n\
-    admin = User.query.filter_by(username=\"admin\").first()\n\
-    if not admin:\n\
-        admin = User(username=\"admin\", email=\"admin@example.com\", is_admin=True)\n\
-        admin.set_password(\"admin123\")\n\
-        db.session.add(admin)\n\
-        db.session.commit()\n\
-        print(\"管理员账号创建成功\")\n\
-"\n\
 python backend/app.py' > /app/start.sh && chmod +x /app/start.sh
 
 # 切换到非root用户
