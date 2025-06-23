@@ -14,6 +14,12 @@ let showFeedbackModal = $ref(false)
 const {toggleTheme} = useTheme()
 const settingStore = useSettingStore()
 
+// 动态获取主项目URL
+const getMainProjectUrl = () => {
+  const currentHost = window.location.hostname
+  return `http://${currentHost}:5001`
+}
+
 </script>
 
 <template>
@@ -28,7 +34,7 @@ const settingStore = useSettingStore()
       </IconWrapper>
     </Tooltip>
 
-    <a href="http://localhost:5001">
+    <a :href="getMainProjectUrl()">
       <BaseIcon
           title="返回首页"
           icon="mdi:home"/>

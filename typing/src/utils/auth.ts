@@ -3,8 +3,11 @@ import axios from 'axios'
 // 配置axios默认设置
 axios.defaults.withCredentials = true
 
-// 主项目API基础URL
-const MAIN_PROJECT_API = 'http://localhost:5001'
+// 主项目API基础URL - 动态获取当前主机名
+const getMainProjectAPI = () => {
+  const currentHost = window.location.hostname
+  return `http://${currentHost}:5001`
+}
 
 /**
  * 检查用户登录状态
@@ -12,7 +15,7 @@ const MAIN_PROJECT_API = 'http://localhost:5001'
  */
 export async function checkLoginStatus(): Promise<boolean> {
   try {
-    const response = await axios.get(`${MAIN_PROJECT_API}/api/check_login`)
+    const response = await axios.get(`${getMainProjectAPI()}/api/check_login`)
     return response.data.logged_in === true
   } catch (error) {
     console.error('检查登录状态失败:', error)
@@ -24,7 +27,7 @@ export async function checkLoginStatus(): Promise<boolean> {
  * 重定向到主项目登录页面
  */
 export function redirectToMainProject(): void {
-  window.location.href = MAIN_PROJECT_API
+  window.location.href = getMainProjectAPI()
 }
 
 /**
