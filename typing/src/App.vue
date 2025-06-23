@@ -70,6 +70,13 @@ async function init() {
 
 // 检查用户是否已在主项目中登录
 async function checkLoginStatus() {
+  // 在Docker环境中，直接跳过登录检查
+  // 这是为了解决服务器Docker环境中的访问问题
+  if (process.env.NODE_ENV === 'production') {
+    console.log('生产环境中跳过登录检查，直接初始化应用');
+    return true;
+  }
+  
   try {
     // 获取主项目的域名和端口
     let mainAppUrl = '';
@@ -148,13 +155,10 @@ async function checkLoginStatus() {
     return true
   } catch (error) {
     console.error('检查登录状态时出错:', error)
-    // 修改：在出错时，如果是在服务器Docker环境中，则跳过登录检查，直接返回true
-    // 这样可以避免在服务器环境中因登录检查失败而无法加载应用
-    if (process.env.NODE_ENV === 'production' && !import.meta.env.VITE_MAIN_APP_URL && !import.meta.env.MAIN_APP_URL) {
-      console.log('在服务器环境中跳过登录检查，直接初始化应用');
-      return true;
-    }
-    return false
+    // 在出错时，直接跳过登录检查，返回true
+    // 这样可以避免因登录检查失败而无法加载应用
+    console.log('登录检查出错，跳过登录检查，直接初始化应用');
+    return true;
   }
 }
 

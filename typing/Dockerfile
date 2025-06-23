@@ -17,11 +17,18 @@ RUN pnpm install
 COPY . .
 
 # 设置环境变量
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV DOCKER_BUILD=true
+ENV VITE_MAIN_APP_URL=http://web:5001
 
 # 暴露端口
 EXPOSE 3000
 
-# 启动命令 - 在开发模式下运行
-CMD ["pnpm", "dev", "--host", "0.0.0.0", "--port", "3000"]
+# 构建生产版本
+RUN pnpm build
+
+# 安装serve工具来提供静态文件服务
+RUN npm install -g serve
+
+# 启动命令 - 在生产模式下运行
+CMD ["serve", "-s", "dist", "-l", "3000"]

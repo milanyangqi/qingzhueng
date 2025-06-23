@@ -80,6 +80,13 @@ export default defineConfig(async () => {
           changeOrigin: true,
           secure: false,
           credentials: 'include',
+          // 添加更多配置以解决跨域问题
+          rewrite: (path) => path,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }
         }
       },
       cors: true

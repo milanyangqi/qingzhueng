@@ -19,7 +19,8 @@ app = Flask(__name__,
             template_folder='../frontend/templates')
 
 # CORS配置
-CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'])
+# 添加Docker环境中的域名
+CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://typing:3000', 'http://web:5001'])
 
 # 配置数据库
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qingzhu_english.db'
