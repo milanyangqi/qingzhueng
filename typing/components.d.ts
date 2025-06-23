@@ -10,7 +10,7 @@ declare module 'vue' {
     Add: typeof import('./src/components/toolbar/Add.vue')['default']
     ArticleContentDialog: typeof import('./src/components/dialog/ArticleContentDialog.vue')['default']
     ArticleList: typeof import('./src/components/list/ArticleList.vue')['default']
-    AuthGuard: typeof import('./src/components/AuthGuard.vue')['default']
+    Backgorund: typeof import('./src/components/Backgorund.vue')['default']
     BaseButton: typeof import('./src/components/BaseButton.vue')['default']
     BaseIcon: typeof import('./src/components/BaseIcon.vue')['default']
     BaseList: typeof import('./src/components/list/BaseList.vue')['default']
