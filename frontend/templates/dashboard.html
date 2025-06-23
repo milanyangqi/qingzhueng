@@ -62,6 +62,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="#" onclick="openTypingPractice()">
+                        <i class="fas fa-keyboard"></i>
+                        <span>打字练习</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ url_for('profile') }}">
                         <i class="fas fa-user"></i>
                         <span>个人资料</span>
@@ -194,6 +200,19 @@
         </main>
     </div>
     
+    <script>
+        function openTypingPractice() {
+            // 尝试打开打字练习项目
+            const typingWindow = window.open('http://localhost:3000', '_blank');
+            
+            // 检查窗口是否成功打开
+            setTimeout(() => {
+                if (!typingWindow || typingWindow.closed) {
+                    alert('打字练习项目可能未启动。请在终端中执行以下命令：\n\ncd /Users/zhangchenyu/Downloads/myengweb/typing\nnpm run dev\n\n然后重新点击此按钮。');
+                }
+            }, 1000);
+        }
+    </script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

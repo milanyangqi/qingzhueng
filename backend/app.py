@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory, make_response
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
+from flask_cors import CORS
 from datetime import datetime, timedelta
 import os
 import json
@@ -16,6 +17,9 @@ os.environ['DOUBAO_API_KEY'] = '6fbae205-63c0-46c9-9f18-026613652949'
 app = Flask(__name__, 
             static_folder='../frontend/static',
             template_folder='../frontend/templates')
+
+# 配置CORS，允许打字练习项目访问
+CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://127.0.0.1:3000'])
 
 # 配置数据库
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qingzhu_english.db'
