@@ -9,6 +9,7 @@ import {createI18n} from 'vue-i18n'
 import router from "@/router.ts";
 import VueVirtualScroller from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import { strictAuthGuard, startAuthCheck } from '@/utils/auth'
 
 const i18n = createI18n({
   locale: 'zh-CN',
@@ -28,4 +29,11 @@ app.use(pinia)
 app.use(i18n)
 app.use(router)
 
-app.mount('#app')
+// 在应用启动前检查登录状态
+strictAuthGuard().then(isLoggedIn => {
+  if (isLoggedIn) {
+    app.mount('#app')
+    // 启动定期认证检查（每5分钟检查一次）
+    startAuthCheck()
+  }
+})

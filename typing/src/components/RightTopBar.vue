@@ -28,10 +28,10 @@ const settingStore = useSettingStore()
       </IconWrapper>
     </Tooltip>
 
-    <a href="https://github.com/zyronon/typing-word" target="_blank">
+    <a href="http://localhost:5001">
       <BaseIcon
-          title="Github地址"
-          icon="mdi:github"/>
+          title="返回首页"
+          icon="mdi:home"/>
     </a>
   </div>
 </template>

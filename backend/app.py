@@ -18,8 +18,8 @@ app = Flask(__name__,
             static_folder='../frontend/static',
             template_folder='../frontend/templates')
 
-# 配置CORS，允许打字练习项目访问
-CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://127.0.0.1:3000'])
+# CORS配置
+CORS(app, supports_credentials=True, origins=['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'])
 
 # 配置数据库
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qingzhu_english.db'

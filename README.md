@@ -39,22 +39,62 @@ myengweb/
 
 ## 快速开始
 
+### Docker 部署（推荐）
+
+#### 一键启动
+```bash
+# 构建并启动所有服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+```
+
+#### 访问地址
+- 主项目（英语学习平台）：http://localhost:5001
+- 打字练习项目：http://localhost:3000
+
+#### 管理命令
+```bash
+# 停止所有服务
+docker-compose down
+
+# 重新构建并启动
+docker-compose up -d --build
+
+# 查看特定服务日志
+docker-compose logs -f web      # 主项目日志
+docker-compose logs -f typing   # 打字练习日志
+```
+
 ### 本地开发
 ```bash
 # 安装依赖
 pip install -r backend/requirements.txt
 
-# 启动服务
+# 启动主项目
 python backend/app.py
+
+# 启动打字练习项目（另开终端）
+cd typing
+npm install
+npm start
 ```
 
-### Docker 部署
+### 使用启动脚本
 ```bash
-# 构建并启动
-docker-compose up -d
-```
+# 使用Docker启动
+./start.sh start
 
-访问地址：http://localhost:5001
+# 使用本地环境启动
+./start.sh start-local
+
+# 查看帮助
+./start.sh help
+```
 
 ## 主要模块
 

@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   web:
     build: .
@@ -15,9 +17,10 @@ services:
       - UPLOAD_FOLDER=/app/uploads
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/ || exit 1"]
       interval: 30s
       timeout: 10s
+      start_period: 40s
       retries: 3
     deploy:
       resources:
@@ -35,9 +38,10 @@ services:
       - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
       interval: 30s
       timeout: 10s
+      start_period: 60s
       retries: 3
     deploy:
       resources:
@@ -46,7 +50,8 @@ services:
         reservations:
           memory: 256M
     depends_on:
-      - web
+      web:
+        condition: service_healthy
 
   # 可选：添加数据库服务（如果需要使用PostgreSQL）
   # db:
