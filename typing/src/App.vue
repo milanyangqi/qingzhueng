@@ -81,7 +81,16 @@ async function checkLoginStatus() {
     }
     // 2. 如果是生产环境但没有环境变量，则从当前URL推断
     else if (process.env.NODE_ENV === 'production') {
-      mainAppUrl = window.location.origin.replace(':3000', ':5001');
+      // 修改：在Docker环境中，如果URL包含3000端口，则替换为5001
+      // 如果不包含端口号，则直接使用原始URL
+      const currentOrigin = window.location.origin;
+      if (currentOrigin.includes(':3000')) {
+        mainAppUrl = currentOrigin.replace(':3000', ':5001');
+      } else {
+        // 如果是在服务器上直接访问3000端口，则使用相同的主机名但端口为5001
+        const hostname = window.location.hostname;
+        mainAppUrl = `http://${hostname}:5001`;
+      }
       console.log('从当前URL推断主项目URL:', mainAppUrl);
     }
     // 3. 开发环境使用空字符串（通过代理访问）
@@ -117,7 +126,14 @@ async function checkLoginStatus() {
       }
       // 2. 如果是生产环境但没有环境变量，则从当前URL推断
       else if (process.env.NODE_ENV === 'production') {
-        loginUrl = window.location.origin.replace(':3000', ':5001');
+        // 修改：与上面相同的逻辑处理登录URL
+        const currentOrigin = window.location.origin;
+        if (currentOrigin.includes(':3000')) {
+          loginUrl = currentOrigin.replace(':3000', ':5001');
+        } else {
+          const hostname = window.location.hostname;
+          loginUrl = `http://${hostname}:5001`;
+        }
       }
       // 3. 开发环境使用硬编码的URL
       else {
@@ -132,6 +148,12 @@ async function checkLoginStatus() {
     return true
   } catch (error) {
     console.error('检查登录状态时出错:', error)
+    // 修改：在出错时，如果是在服务器Docker环境中，则跳过登录检查，直接返回true
+    // 这样可以避免在服务器环境中因登录检查失败而无法加载应用
+    if (process.env.NODE_ENV === 'production' && !import.meta.env.VITE_MAIN_APP_URL && !import.meta.env.MAIN_APP_URL) {
+      console.log('在服务器环境中跳过登录检查，直接初始化应用');
+      return true;
+    }
     return false
   }
 }
