@@ -17,9 +17,24 @@ const lifecycle = process.env.npm_lifecycle_event;
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => {
-  const latestCommitHash = await new Promise<string>((resolve) => {
-    return getLastCommit((err, commit) => (err ? 'unknown' : resolve(commit.shortHash)))
-  })
+  let latestCommitHash = 'unknown';
+  
+  // 在Docker环境中跳过Git操作
+  if (!process.env.DOCKER_BUILD) {
+    try {
+      latestCommitHash = await new Promise<string>((resolve, reject) => {
+        return getLastCommit((err, commit) => {
+          if (err) {
+            resolve('unknown');
+          } else {
+            resolve(commit.shortHash);
+          }
+        });
+      });
+    } catch (error) {
+      latestCommitHash = 'unknown';
+    }
+  }
   return {
     plugins: [
       vue({
