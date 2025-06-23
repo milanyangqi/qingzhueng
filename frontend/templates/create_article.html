@@ -295,6 +295,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="#" onclick="openTypingPractice()">
+                        <i class="fas fa-keyboard"></i>
+                        <span>打字练习</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ url_for('profile') }}">
                         <i class="fas fa-user"></i>
                         <span>个人资料</span>
@@ -1294,6 +1300,20 @@ ${multipleChoiceText ? `## 选择题\n\n${multipleChoiceText}\n\n` : ''}${transl
                 });
             });
         });
+        
+        function openTypingPractice() {
+            // 动态获取当前服务器地址并构建打字练习项目URL
+            const currentHost = window.location.hostname;
+            const typingUrl = `http://${currentHost}:3000`;
+            const typingWindow = window.open(typingUrl, '_blank');
+            
+            // 检查窗口是否成功打开
+            setTimeout(() => {
+                if (!typingWindow || typingWindow.closed) {
+                    alert(`打字练习项目可能未启动。请确保打字练习服务正在运行在 ${typingUrl}`);
+                }
+            }, 1000);
+        }
     </script>
 </body>
 </html>

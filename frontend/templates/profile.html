@@ -55,6 +55,12 @@
                         <span>阅读排版</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="#" onclick="openTypingPractice()">
+                        <i class="fas fa-keyboard"></i>
+                        <span>打字练习</span>
+                    </a>
+                </li>
                 <li class="nav-item active">
                     <a href="{{ url_for('profile') }}">
                         <i class="fas fa-user"></i>
@@ -330,6 +336,16 @@
     <!-- 消息提示 -->
     <div id="message" class="message"></div>
     
+    <script>
+        // 打字练习功能
+        function openTypingPractice() {
+            const typingUrl = `http://${window.location.hostname}:5001/typing`;
+            const newWindow = window.open(typingUrl, '_blank');
+            if (!newWindow) {
+                alert('无法打开打字练习页面，请检查浏览器弹窗设置');
+            }
+        }
+    </script>
     <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 </body>
 </html>

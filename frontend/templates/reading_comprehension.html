@@ -282,6 +282,12 @@ textarea {
                 </a>
             </li>
             <li class="nav-item">
+                <a href="#" onclick="openTypingPractice()">
+                    <i class="fas fa-keyboard"></i>
+                    <span>打字练习</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="#">
                     <i class="fas fa-chart-bar"></i>
                     <span>学习统计</span>
@@ -1304,6 +1310,15 @@ const saveArticleBtn = document.getElementById('save-article-btn');
         });
     });
 });
+
+// 打字练习功能
+function openTypingPractice() {
+    const typingUrl = `http://${window.location.hostname}:5001/typing`;
+    const newWindow = window.open(typingUrl, '_blank');
+    if (!newWindow) {
+        alert('无法打开打字练习页面，请检查浏览器弹窗设置');
+    }
+}
 </script>
         </div>
     </div>

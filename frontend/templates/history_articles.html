@@ -248,6 +248,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="#" onclick="openTypingPractice()">
+                        <i class="fas fa-keyboard"></i>
+                        <span>打字练习</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ url_for('profile') }}">
                         <i class="fas fa-user"></i>
                         <span>个人资料</span>
@@ -662,6 +668,15 @@
                 event.target.style.display = 'none';
             }
         });
+        
+        // 打字练习功能
+        function openTypingPractice() {
+            const typingUrl = `http://${window.location.hostname}:5001/typing`;
+            const newWindow = window.open(typingUrl, '_blank');
+            if (!newWindow) {
+                alert('无法打开打字练习页面，请检查浏览器弹窗设置');
+            }
+        }
     </script>
 </body>
 </html>
