@@ -18,13 +18,7 @@ const router = createRouter({
     routes,
 })
 
-// 全局路由守卫
-router.beforeEach(async (to, from, next) => {
-    const isAuthenticated = await strictAuthGuard()
-    if (isAuthenticated) {
-        next()
-    }
-    // 如果未认证，strictAuthGuard会自动重定向，这里不需要调用next()
-})
+// 不再需要全局路由守卫，因为我们在App.vue中处理登录状态检查和显示
+// 登录状态检查现在由App.vue组件负责
 
 export default router

@@ -8,7 +8,7 @@
         </svg>
       </div>
       <h2>需要登录</h2>
-      <p>请先登录主项目后再访问打字练习系统</p>
+      <p>您尚未登录或登录已过期。请先在主项目（端口5001）登录后，再访问打字练习系统。系统将自动验证您的登录状态。</p>
       <button @click="redirectToLogin" class="login-btn">
         前往登录
       </button>

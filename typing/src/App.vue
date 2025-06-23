@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {onMounted, watch} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {BaseState, useBaseStore} from "@/stores/base.ts";
 import {Dict, DictType} from "@/types.ts"
 import {useRuntimeStore} from "@/stores/runtime.ts";
@@ -15,11 +15,21 @@ import CollectNotice from "@/components/CollectNotice.vue";
 import {SAVE_SETTING_KEY, SAVE_DICT_KEY} from "@/utils/const.ts";
 import {shakeCommonDict} from "@/utils";
 import router from "@/router.ts";
+import LoginRequired from "@/components/LoginRequired.vue";
+import {checkLoginStatus} from "@/utils/auth";
 
 const store = useBaseStore()
 const runtimeStore = useRuntimeStore()
 const settingStore = useSettingStore()
 const {setTheme} = useTheme()
+
+// 登录状态响应式变量
+const isLoggedIn = ref(false)
+
+// 检查登录状态
+async function checkAuth() {
+  isLoggedIn.value = await checkLoginStatus()
+}
 
 watch(store.$state, (n: BaseState) => {
   localforage.setItem(SAVE_DICT_KEY.key, JSON.stringify({val: shakeCommonDict(n), version: SAVE_DICT_KEY.version}))
@@ -70,6 +80,10 @@ async function init() {
 
 onMounted(() => {
   init()
+  checkAuth() // 初始检查登录状态
+  
+  // 每30秒检查一次登录状态
+  setInterval(checkAuth, 30000)
 
   if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
     // 当前设备是移动设备
@@ -81,10 +95,14 @@ onMounted(() => {
 
 <template>
   <Backgorund/>
-  <router-view/>
-  <CollectNotice/>
-  <ArticleContentDialog/>
-  <SettingDialog/>
+  <!-- 根据登录状态显示不同内容 -->
+  <template v-if="isLoggedIn">
+    <router-view/>
+    <CollectNotice/>
+    <ArticleContentDialog/>
+    <SettingDialog/>
+  </template>
+  <LoginRequired v-else/>
 </template>
 
 <style scoped lang="scss">
