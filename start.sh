@@ -15,18 +15,34 @@ NC="\033[0m" # No Color
 
 # 显示帮助信息
 show_help() {
-    echo -e "${BLUE}青竹英语网站启动脚本${NC}"
-    echo -e "用法: $0 [选项]"
-    echo -e "选项:"
-    echo -e "  ${GREEN}start${NC}\t启动应用（默认使用Docker）"
-    echo -e "  ${GREEN}start-local${NC}\t在本地环境启动应用"
-    echo -e "  ${GREEN}stop${NC}\t停止应用"
-    echo -e "  ${GREEN}restart${NC}\t重启应用"
-    echo -e "  ${GREEN}status${NC}\t查看应用状态"
-    echo -e "  ${GREEN}logs${NC}\t查看应用日志"
-    echo -e "  ${GREEN}build${NC}\t构建Docker镜像"
-    echo -e "  ${GREEN}init-admin${NC}\t初始化管理员账号"
-    echo -e "  ${GREEN}help${NC}\t显示此帮助信息"
+    echo -e "${CYAN}青竹英语学习系统 - 启动脚本${NC}"
+    echo -e "${YELLOW}使用方法: $0 [选项]${NC}"
+    echo ""
+    echo -e "${GREEN}可用选项:${NC}"
+    echo -e "  ${BLUE}start${NC}        使用Docker启动应用（主项目+打字练习）"
+    echo -e "  ${BLUE}start-local${NC}  使用本地环境启动应用（主项目+打字练习）"
+    echo -e "  ${BLUE}stop${NC}         停止应用"
+    echo -e "  ${BLUE}restart${NC}      重启应用"
+    echo -e "  ${BLUE}status${NC}       查看应用状态"
+    echo -e "  ${BLUE}logs${NC}         查看所有应用日志"
+    echo -e "  ${BLUE}logs flask${NC}   查看Flask应用日志"
+    echo -e "  ${BLUE}logs typing${NC}  查看打字练习应用日志"
+    echo -e "  ${BLUE}build${NC}        构建Docker镜像"
+    echo -e "  ${BLUE}init-admin${NC}   初始化管理员账号"
+    echo -e "  ${BLUE}help${NC}         显示此帮助信息"
+    echo ""
+    echo -e "${YELLOW}示例:${NC}"
+    echo -e "  $0 start          # 使用Docker启动应用"
+    echo -e "  $0 start-local    # 使用本地环境启动应用"
+    echo -e "  $0 stop           # 停止应用"
+    echo -e "  $0 logs           # 查看所有应用日志"
+    echo -e "  $0 logs flask     # 查看Flask应用日志"
+    echo -e "  $0 logs typing    # 查看打字练习应用日志"
+    echo ""
+    echo -e "${CYAN}访问地址:${NC}"
+    echo -e "  主项目: http://localhost:5001"
+    echo -e "  打字练习: http://localhost:3000"
+    echo ""
 }
 
 # 检查Docker是否安装
@@ -53,14 +69,31 @@ check_python() {
 # 启动应用（Docker方式）
 start_docker() {
     echo -e "${YELLOW}正在使用Docker启动应用...${NC}"
+    
+    # 检查并创建必要的目录
+    mkdir -p data logs uploads
+    
+    # 设置目录权限
+    chmod 755 data logs uploads
+    
+    # 启动应用
     docker-compose up -d
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}应用已成功启动！${NC}"
-        echo -e "${BLUE}访问地址: http://localhost:5001${NC}"
-        echo -e "${CYAN}默认管理员账号: admin${NC}"
-        echo -e "${CYAN}默认管理员密码: admin123${NC}"
+    
+    # 等待应用启动
+    echo -e "${YELLOW}等待应用启动...${NC}"
+    sleep 15
+    
+    # 检查应用状态
+    if docker-compose ps | grep -q "qingzhu_english.*Up" && docker-compose ps | grep -q "qingzhu_typing.*Up"; then
+        echo -e "${GREEN}应用启动成功！${NC}"
+        echo -e "${CYAN}主项目访问地址: http://localhost:5001${NC}"
+        echo -e "${CYAN}打字练习访问地址: http://localhost:3000${NC}"
+        echo -e "${CYAN}管理员账号: admin${NC}"
+        echo -e "${CYAN}管理员密码: admin123${NC}"
     else
-        echo -e "${RED}启动失败，请检查错误信息。${NC}"
+        echo -e "${RED}应用启动失败，请检查日志${NC}"
+        docker-compose logs
+        exit 1
     fi
 }
 
@@ -68,6 +101,15 @@ start_docker() {
 start_local() {
     echo -e "${YELLOW}正在本地环境启动应用...${NC}"
     check_python
+    
+    # 检查Node.js版本
+    if ! command -v node &> /dev/null; then
+        echo -e "${RED}Node.js 未安装，请先安装Node.js${NC}"
+        exit 1
+    fi
+    
+    # 检查并创建必要的目录
+    mkdir -p data logs uploads
     
     # 检查虚拟环境
     if [ ! -d "venv" ]; then
@@ -78,27 +120,64 @@ start_local() {
     # 激活虚拟环境
     source venv/bin/activate || { echo -e "${RED}无法激活虚拟环境${NC}"; exit 1; }
     
-    # 安装依赖
+    # 安装Python依赖
     echo -e "${YELLOW}安装依赖...${NC}"
     pip install -r backend/requirements.txt
     
-    # 创建数据目录
-    mkdir -p data
+    # 安装Node.js依赖（如果需要）
+    if [ -d "typing" ] && [ -f "typing/package.json" ]; then
+        echo -e "${YELLOW}安装打字练习项目依赖...${NC}"
+        cd typing
+        npm install
+        cd ..
+    fi
     
-    # 启动应用
-    echo -e "${YELLOW}启动Flask应用...${NC}"
+    # 设置环境变量
     export FLASK_APP=backend/app.py
     export FLASK_ENV=development
-    python backend/app.py &
+    export DATABASE_URL=sqlite:///data/app.db
     
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}应用已成功启动！${NC}"
-        echo -e "${BLUE}访问地址: http://localhost:5001${NC}"
-        echo -e "${CYAN}默认管理员账号: admin${NC}"
-        echo -e "${CYAN}默认管理员密码: admin123${NC}"
-        echo -e "${YELLOW}提示: 使用 Ctrl+C 停止应用${NC}"
+    # 启动Flask应用
+    echo -e "${YELLOW}启动Flask应用...${NC}"
+    nohup python backend/app.py > logs/app.log 2>&1 &
+    
+    # 启动打字练习应用（如果存在）
+    if [ -d "typing" ] && [ -f "typing/package.json" ]; then
+        echo -e "${YELLOW}启动打字练习应用...${NC}"
+        cd typing
+        nohup npm start > ../logs/typing.log 2>&1 &
+        cd ..
+    fi
+    
+    # 等待应用启动
+    sleep 8
+    
+    # 检查应用是否启动成功
+    flask_running=$(pgrep -f "python backend/app.py")
+    typing_running=$(pgrep -f "npm start")
+    
+    if [ ! -z "$flask_running" ]; then
+        echo -e "${GREEN}Flask应用启动成功！${NC}"
+        echo -e "${CYAN}主项目访问地址: http://localhost:5001${NC}"
+        echo -e "${CYAN}Flask日志文件: logs/app.log${NC}"
     else
-        echo -e "${RED}启动失败，请检查错误信息。${NC}"
+        echo -e "${RED}Flask应用启动失败，请检查日志文件${NC}"
+        cat logs/app.log
+    fi
+    
+    if [ ! -z "$typing_running" ]; then
+        echo -e "${GREEN}打字练习应用启动成功！${NC}"
+        echo -e "${CYAN}打字练习访问地址: http://localhost:3000${NC}"
+        echo -e "${CYAN}打字练习日志文件: logs/typing.log${NC}"
+    elif [ -d "typing" ]; then
+        echo -e "${YELLOW}打字练习应用启动失败，请检查日志文件${NC}"
+        if [ -f "logs/typing.log" ]; then
+            cat logs/typing.log
+        fi
+    fi
+    
+    if [ -z "$flask_running" ]; then
+        exit 1
     fi
 }
 
@@ -106,14 +185,22 @@ start_local() {
 stop_app() {
     echo -e "${YELLOW}正在停止应用...${NC}"
     docker-compose down
-    echo -e "${GREEN}应用已停止${NC}"
+    echo -e "${GREEN}Docker应用已停止${NC}"
     
     # 检查是否有本地Python进程需要停止
-    local_pid=$(pgrep -f "python backend/app.py")
-    if [ ! -z "$local_pid" ]; then
-        echo -e "${YELLOW}停止本地Python进程...${NC}"
-        kill $local_pid
-        echo -e "${GREEN}本地进程已停止${NC}"
+    local_flask_pid=$(pgrep -f "python backend/app.py")
+    if [ ! -z "$local_flask_pid" ]; then
+        echo -e "${YELLOW}停止本地Flask进程...${NC}"
+        kill $local_flask_pid
+        echo -e "${GREEN}本地Flask进程已停止${NC}"
+    fi
+    
+    # 检查是否有本地Node.js进程需要停止
+    local_node_pid=$(pgrep -f "npm start")
+    if [ ! -z "$local_node_pid" ]; then
+        echo -e "${YELLOW}停止本地Node.js进程...${NC}"
+        kill $local_node_pid
+        echo -e "${GREEN}本地Node.js进程已停止${NC}"
     fi
 }
 
@@ -127,22 +214,47 @@ restart_app() {
 
 # 查看应用状态
 check_status() {
-    echo -e "${YELLOW}应用状态:${NC}"
+    echo -e "${YELLOW}Docker应用状态:${NC}"
     docker-compose ps
     
-    # 检查本地进程
-    local_pid=$(pgrep -f "python backend/app.py")
-    if [ ! -z "$local_pid" ]; then
-        echo -e "${GREEN}本地Python进程正在运行，PID: $local_pid${NC}"
+    echo -e "${YELLOW}本地进程状态:${NC}"
+    # 检查本地Flask进程
+    local_flask_pid=$(pgrep -f "python backend/app.py")
+    if [ ! -z "$local_flask_pid" ]; then
+        echo -e "${GREEN}本地Flask进程正在运行，PID: $local_flask_pid${NC}"
     else
-        echo -e "${YELLOW}没有检测到本地Python进程${NC}"
+        echo -e "${YELLOW}没有检测到本地Flask进程${NC}"
+    fi
+    
+    # 检查本地Node.js进程
+    local_node_pid=$(pgrep -f "npm start")
+    if [ ! -z "$local_node_pid" ]; then
+        echo -e "${GREEN}本地Node.js进程正在运行，PID: $local_node_pid${NC}"
+    else
+        echo -e "${YELLOW}没有检测到本地Node.js进程${NC}"
     fi
 }
 
 # 查看应用日志
 view_logs() {
-    echo -e "${YELLOW}应用日志:${NC}"
-    docker-compose logs --tail=100 -f
+    if [ "$1" == "typing" ]; then
+        echo -e "${YELLOW}打字练习应用日志:${NC}"
+        if [ -f "logs/typing.log" ]; then
+            tail -f logs/typing.log
+        else
+            docker-compose logs --tail=100 -f typing
+        fi
+    elif [ "$1" == "flask" ]; then
+        echo -e "${YELLOW}Flask应用日志:${NC}"
+        if [ -f "logs/app.log" ]; then
+            tail -f logs/app.log
+        else
+            docker-compose logs --tail=100 -f web
+        fi
+    else
+        echo -e "${YELLOW}所有应用日志:${NC}"
+        docker-compose logs --tail=100 -f
+    fi
 }
 
 # 构建Docker镜像
@@ -239,7 +351,7 @@ main() {
             check_status
             ;;
         logs)
-            view_logs
+            view_logs "$2"
             ;;
         build)
             check_docker

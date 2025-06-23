@@ -7,30 +7,46 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./uploads:/app/uploads
     environment:
       - FLASK_ENV=production
-      # 使用随机生成的密钥增强安全性
-      - SECRET_KEY=${SECRET_KEY:-$(openssl rand -hex 32)}
-      - DATABASE_URL=sqlite:///data/qingzhu_english.db
-      # 设置时区
-      - TZ=Asia/Shanghai
-      # 管理员账号配置
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=admin123
-      - ADMIN_EMAIL=admin@example.com
+      - DATABASE_URL=sqlite:///data/app.db
+      - SECRET_KEY=your-secret-key-here
+      - UPLOAD_FOLDER=/app/uploads
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    # 限制资源使用
     deploy:
       resources:
         limits:
-          cpus: '1.0'
           memory: 512M
+        reservations:
+          memory: 256M
+
+  typing:
+    build: ./typing
+    container_name: qingzhu_typing
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    depends_on:
+      - web
 
   # 可选：添加数据库服务（如果需要使用PostgreSQL）
   # db:
