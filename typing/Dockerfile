@@ -7,6 +7,7 @@ WORKDIR /app
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV DOCKER_BUILD=true
 
 # 安装git（用于git-last-commit包）
 RUN apk add --no-cache git wget
@@ -37,8 +38,8 @@ USER typing
 EXPOSE 3000
 
 # 健康检查（增加启动时间）
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3000/index.html || exit 1
 
 # 启动命令
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["serve", "-s", "dist", "-l", "3000", "--single"]
