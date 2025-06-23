@@ -47,7 +47,6 @@ declare module 'vue' {
     IconWrapper: typeof import('./src/components/IconWrapper.vue')['default']
     Input: typeof import('./src/components/Input.vue')['default']
     List: typeof import('./src/components/list/List.vue')['default']
-    LoginRequired: typeof import('./src/components/LoginRequired.vue')['default']
     Logo: typeof import('./src/components/Logo.vue')['default']
     MiniDialog: typeof import('./src/components/dialog/MiniDialog.vue')['default']
     PopConfirm: typeof import('./src/components/PopConfirm.vue')['default']

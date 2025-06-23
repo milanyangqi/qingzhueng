@@ -49,6 +49,27 @@ Thumbs.db
 # 日志
 *.log
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Vue.js
+dist/
+dist-ssr/
+*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Package managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
 # 数据目录
 data/
 

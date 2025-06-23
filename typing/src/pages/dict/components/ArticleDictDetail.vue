@@ -288,8 +288,7 @@ defineExpose({getDictDetail, add, editDict})
                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                    @change="importData">
           </div>
-          <!-- 导出功能已隐藏，如需恢复请取消注释以下代码 -->
-          <!-- <div class="export"
+          <div class="export"
                style="position: relative"
                @click.stop="null">
             <BaseButton size="small" @click="showExport = true">导出</BaseButton>
@@ -307,7 +306,7 @@ defineExpose({getDictDetail, add, editDict})
                 <BaseButton size="small" @click="exportData({type:'chapter',data:article})">当前章节</BaseButton>
               </div>
             </MiniDialog>
-          </div> -->
+          </div>
         </div>
         <div class="desc" v-if="runtimeStore.editDict.description">{{ runtimeStore.editDict.description }}</div>
         <div class="num">文章: {{ runtimeStore.editDict.articles.length }}篇</div>

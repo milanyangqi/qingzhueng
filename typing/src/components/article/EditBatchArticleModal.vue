@@ -174,8 +174,7 @@ useWindowClick(() => showExport = false)
                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                    @change="e => emit('importData',e)">
           </div>
-          <!-- 导出功能已隐藏，如需恢复请取消注释以下代码 -->
-          <!-- <div class="export"
+          <div class="export"
                style="position: relative"
                @click.stop="null">
             <BaseButton size="small" @click="showExport = true">导出</BaseButton>
@@ -193,7 +192,7 @@ useWindowClick(() => showExport = false)
                 <BaseButton size="small" @click="emit('exportData',{type:'chapter',data:article})">当前章节</BaseButton>
               </div>
             </MiniDialog>
-          </div> -->
+          </div>
           <BaseButton size="small" @click="add">新增</BaseButton>
         </div>
       </div>

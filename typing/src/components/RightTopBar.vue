@@ -14,12 +14,6 @@ let showFeedbackModal = $ref(false)
 const {toggleTheme} = useTheme()
 const settingStore = useSettingStore()
 
-// 动态获取主项目URL
-const getMainProjectUrl = () => {
-  const currentHost = window.location.hostname
-  return `http://${currentHost}:5001`
-}
-
 </script>
 
 <template>
@@ -34,10 +28,10 @@ const getMainProjectUrl = () => {
       </IconWrapper>
     </Tooltip>
 
-    <a :href="getMainProjectUrl()">
+    <a href="https://github.com/zyronon/typing-word" target="_blank">
       <BaseIcon
-          title="返回首页"
-          icon="mdi:home"/>
+          title="Github地址"
+          icon="mdi:github"/>
     </a>
   </div>
 </template>
