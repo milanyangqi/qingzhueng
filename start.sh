@@ -41,7 +41,7 @@ show_help() {
     echo ""
     echo -e "${CYAN}访问地址:${NC}"
     echo -e "  主项目: http://localhost:5001"
-    echo -e "  打字练习: http://localhost:3000"
+    echo -e "  打字练习: http://localhost:5001/typing/"
     echo ""
 }
 
@@ -87,7 +87,7 @@ start_docker() {
     if docker-compose ps | grep -q "qingzhu_english.*Up" && docker-compose ps | grep -q "qingzhu_typing.*Up"; then
         echo -e "${GREEN}应用启动成功！${NC}"
         echo -e "${CYAN}主项目访问地址: http://localhost:5001${NC}"
-        echo -e "${CYAN}打字练习访问地址: http://localhost:3000${NC}"
+        echo -e "${CYAN}打字练习访问地址: http://localhost:5001/typing/${NC}"
         echo -e "${CYAN}管理员账号: admin${NC}"
         echo -e "${CYAN}管理员密码: admin123${NC}"
     else
@@ -167,7 +167,7 @@ start_local() {
     
     if [ ! -z "$typing_running" ]; then
         echo -e "${GREEN}打字练习应用启动成功！${NC}"
-        echo -e "${CYAN}打字练习访问地址: http://localhost:3000${NC}"
+        echo -e "${CYAN}打字练习访问地址: http://localhost:5001/typing/${NC}"
         echo -e "${CYAN}打字练习日志文件: logs/typing.log${NC}"
     elif [ -d "typing" ]; then
         echo -e "${YELLOW}打字练习应用启动失败，请检查日志文件${NC}"

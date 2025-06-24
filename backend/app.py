@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
@@ -2287,6 +2287,38 @@ def check_login_status():
     return jsonify({
         'logged_in': False
     })
+
+# 路由：处理typing应用的根路径
+@app.route('/typing/')
+@app.route('/typing')
+def typing_index():
+    """提供typing应用的入口页面，需要登录才能访问
+    
+    Returns:
+        HTML: typing应用的index.html页面，或重定向到登录页面
+    """
+    # 检查用户是否登录
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    return send_from_directory('../frontend/static/typing', 'index.html')
+
+# 路由：处理typing应用的静态文件
+@app.route('/typing/<path:path>')
+def typing_static(path):
+    """提供typing应用的静态文件，需要登录才能访问
+    
+    Args:
+        path: 请求的文件路径
+        
+    Returns:
+        File: 请求的静态文件，或重定向到登录页面
+    """
+    # 检查用户是否登录
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    return send_from_directory('../frontend/static/typing', path)
 
 if __name__ == '__main__':
     with app.app_context():

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="icon" type="image/svg+xml" href="/typing/logo.jpg"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Typing Word</title>
+    <script>
+      +(function () {
+        function rem() {
+          let html = document.documentElement;
+          let max = parseInt('2048rem');
+          let min = parseInt('2048rem');
+          let width;
+          if (window.innerWidth < min) {
+            width = min;
+          } else {
+            width = window.innerWidth;
+          }
+          // console.log('width', width)
+          html.style.fontSize = width / max + 'px';
+        }
+
+        rem();
+        window.addEventListener('resize', rem);
+      })();
+    </script>
+    <script>
+
+    </script>
+    <script>
+      // 网站统计代码已移除
+    </script>
+  <script type="module" crossorigin src="/typing/assets/index-d0c90b3c.js"></script>
+  <link rel="stylesheet" href="/typing/assets/index-52339e0b.css">
+</head>
+<body>
+<div id="app"></div>
+
+</body>
+</html>

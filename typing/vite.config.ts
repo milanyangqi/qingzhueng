@@ -59,8 +59,8 @@ export default defineConfig(async () => {
     define: {
       LATEST_COMMIT_HASH: JSON.stringify(latestCommitHash + (process.env.NODE_ENV === 'production' ? '' : ' (dev)')),
     },
-    //默认是'',导致只能在一级域名下使用。
-    base: './',
+    //修改为子路径部署，以便在主项目下访问
+    base: '/typing/',
     resolve: {
       alias: {
         "@": pathResolve("src"),

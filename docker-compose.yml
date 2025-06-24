@@ -31,12 +31,13 @@ services:
     build: ./typing
     container_name: qingzhu_typing
     ports:
-      - "3000:3000"
+      - "5001:3000"
     environment:
       - NODE_ENV=production
       # 修改环境变量，确保使用正确的主项目URL
       # 在Docker网络中，服务之间可以通过服务名称相互访问
       - VITE_MAIN_APP_URL=http://web:5001
+      - VITE_BASE=/typing/
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]

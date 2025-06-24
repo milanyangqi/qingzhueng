@@ -58,7 +58,7 @@ docker-compose ps
 
 #### 服务访问
 - 主网站：http://localhost:5001
-- 单词练习：http://localhost:3000
+- 单词练习：http://localhost:5001/typing/
 
 ## 单词练习模块功能
 
@@ -90,7 +90,7 @@ docker-compose logs -f
 
 #### 访问地址
 - 主项目（英语学习平台）：http://localhost:5001
-- 打字练习项目：http://localhost:3000
+- 打字练习项目：http://localhost:5001/typing/
 
 #### 管理命令
 ```bash
