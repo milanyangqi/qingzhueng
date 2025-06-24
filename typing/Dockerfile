@@ -19,7 +19,7 @@ COPY . .
 # 设置环境变量
 ENV NODE_ENV=production
 ENV DOCKER_BUILD=true
-ENV VITE_MAIN_APP_URL=http://web:5001
+ENV VITE_MAIN_APP_URL=http://localhost:5001
 
 # 暴露端口
 EXPOSE 3000
