@@ -31,7 +31,7 @@ services:
     build: ./typing
     container_name: qingzhu_typing
     ports:
-      - "5001:3000"
+      - "5002:3000"
     environment:
       - NODE_ENV=production
       # 修改环境变量，确保使用正确的主项目URL
