@@ -2320,6 +2320,45 @@ def typing_static(path):
         
     return send_from_directory('../frontend/static/typing', path)
 
+# 路由：处理typing应用的sound资源
+@app.route('/sound/<path:path>')
+def typing_sound(path):
+    """提供typing应用的声音文件
+    
+    Args:
+        path: 请求的文件路径
+        
+    Returns:
+        File: 请求的声音文件
+    """
+    return send_from_directory('../frontend/static/typing/sound', path)
+
+# 路由：处理typing应用的字典资源
+@app.route('/dicts/<path:path>')
+def typing_dicts(path):
+    """提供typing应用的字典文件
+    
+    Args:
+        path: 请求的文件路径
+        
+    Returns:
+        File: 请求的字典文件
+    """
+    return send_from_directory('../frontend/static/typing/dicts', path)
+
+# 路由：处理typing应用的翻译资源
+@app.route('/translate/<path:path>')
+def typing_translate(path):
+    """提供typing应用的翻译文件
+    
+    Args:
+        path: 请求的文件路径
+        
+    Returns:
+        File: 请求的翻译文件
+    """
+    return send_from_directory('../frontend/static/typing/translate', path)
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
