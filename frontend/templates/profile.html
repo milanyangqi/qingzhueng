@@ -339,7 +339,10 @@
     <script>
         // 打字练习功能
         function openTypingPractice() {
-            const typingUrl = `http://${window.location.hostname}:5001/typing`;
+            // 使用当前协议（http 或 https）
+            const protocol = window.location.protocol;
+            // 使用相对路径，让反向代理处理请求，而不是直接访问端口
+            const typingUrl = `${protocol}//${window.location.host}/typing`;
             const newWindow = window.open(typingUrl, '_blank');
             if (!newWindow) {
                 alert('无法打开打字练习页面，请检查浏览器弹窗设置');
